@@ -6,16 +6,23 @@
 
 •  源码级掌握，底层结构，扩容，红黑树，hash冲突
 
-- HashMap存储的是键值对，键值都可以为空，底层是：数组+链表+红黑树
-- 最重要的是put方法和get方法，
-- put方法主要就是根据key的hashCode和数组长度确定应该存到数组的某个位置。（两种位运算：^ 、&）
+- HashMap存储的是键值对，底层是：数组+链表+红黑树。
 
-- 如果没碰撞就直接存储到那个位置；
-- 如果碰撞了，就以链表的形式存储；以链表形式存储时，就判断元素是否已经存在，如果存在的话就覆盖原来的值并返回旧值；如果元素不存在，就插入到链表尾部，并且如果链表过长的话还会转为红黑树；
-- 当插入成功后，如果当前键值对数量超过阈值（最大容量*负载因子），就进行扩容；扩容就是创建一个新的数组，长度为之前的2倍，并把旧数组中的数据迁移到新数组中。迁移过程中，原来table的每个位置的元素，在新的table中，他们要么待在原来的位置，要么移动2的指数的偏移，这也导致了Hashmap不能保证插入数据的顺序性。
+- 最重要的是put方法和get方法，put方法主要就是根据key的hashCode和数组长度定位到数组的某个位置。（键值都可以为空，null键是放在数组的首位），如果数组为没有进行初始化，则调用resize()方法进行初始化操作。如果没碰撞就直接存储到那个位置；如果碰撞了，就看元素是否已经存在，如果存在的话就覆盖原来的值并返回旧值；如果元素不存在，就插入到链表或者红黑树，并且如果链表过长的话还会转为红黑树；当插入成功后，如果当前键值对数量超过阈值（最大容量*负载因子），就进行扩容；扩容就是创建一个新的数组，长度为之前的2倍，并把旧数组中的数据迁移到新数组中。迁移过程中，原来table的每个位置的元素，在新的table中，他们要么待在原来的位置，要么移动2的指数的偏移，这也导致了Hashmap不能保证插入数据的顺序性。总结为5步就是：
+
+  1、判断数组是否初始化，没有则进行初始化操作（resize）；
+
+  2、通过hash定位数组的索引坐标；
+
+  3、如果该位置上还是空的，就直接插入那个位置；
+
+  4、如果该位置已经有值了，意味着哈希冲突，就看元素是否已经存在，如果存在的话就用新值覆盖原来的值并返回旧值；如果元素不存在，就插入到链表或者红黑树，并且如果链表过长的话还会转为红黑树；
+
+  5、如果添加成功，就判断是否需要进行扩容。
+
+  **（即1.初始化->2.定位->3.非冲突插入->4.冲突插入->5.扩容）**
 
 
-- HashMap允许使用 null键和 null值，null键是放在数组的首位。
 - HashMap线程不安全，如两个线程同时插入同一个位置，则会覆盖数据，导致数据丢失。（JDK1.7还可能死循环）
 - HashMap要变为线程安全，可以用Collections工具类：Map m = Collections.synchronizedMap(new HashMap()); 或者用ConcurrentHashMap。
 
@@ -29,29 +36,101 @@
   }
 ```
 
+**HashMap#put()源码：**
+
+```java
+//1.根据key计算它的hash值，用于得到一个在数组的索引。
+final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
+                   boolean evict) {
+	Node<K,V>[] tab; Node<K,V> p; int n, i;
+    //2.如果数组为空，则调用resize()进行初始化
+	if ((tab = table) == null || (n = tab.length) == 0)
+		n = (tab = resize()).length;
+    //3.如果没有哈希碰撞，就直接插入。
+	if ((p = tab[i = (n - 1) & hash]) == null)
+		tab[i] = newNode(hash, key, value, null);
+    //4.如果哈希冲突，
+	else {
+        //就看元素是否已经存在，如果存在的话就覆盖原来的值并返回旧值；
+        //如果元素不存在，就插入到链表或者红黑树，并且如果链表过长的话还会转为红黑树；
+        ...
+	}
+	++modCount;（记录修改次数，用于在forEach中抛出 ConcurrentModificationException）
+    //5.实际长度+1，判断是否大于临界值，大于则扩容
+	if (++size > threshold)
+		resize();
+	afterNodeInsertion(evict);（LinkedHashMap用，删除近期最少使用的节点）
+	return null;
+}
+```
+
+
+
 ### 1.2 ConcurrentHashMap
 
 •  段锁，如何分段，和hashmap在hash上的区别，性能，等等
 
-#### 1.2.1 CcHashMap相关概念
-
 - ConcurrentHashMap线程安全，键、值都不允许为空，为空则抛出NPE异常。
+
 - JDK1.7 采用分段锁技术，整个 Hash 表被分成多个段Segment，每个段中会对应一个 Segment 段锁，段与段之间可以并发访问，但是多线程想要操作同一个段是需要获取锁的。所有的 put，get，remove 等方法都是根据键的 hash 值对应到相应的段中，然后尝试获取锁进行访问。即ConcurrentHashMap定位一个元素的过程需要进行两次Hash操作。第一次Hash定位到Segment，第二次Hash定位到元素所在的链表的头部。
-- JDK1.8 取消了基于 Segment 的分段锁思想，改用 CAS + synchronized 控制并发操作，在某些方面提升了性能。底层实现跟1.8 版本的 HashMap一样 ，使用数组+链表+红黑树进行数据存储。
-- ​
-- ConcurrentHashMap的Node节点val、next是用volatile修改，保证线程可见性，为后面的多线程服务。
+
+- JDK1.8 取消了基于 Segment 的分段锁思想，改用 CAS + synchronized 控制并发操作。底层实现跟1.8 版本的 HashMap一样 ，使用数组+链表+红黑树进行数据存储。
+
+- ConcurrentHashMap的put方法过程很清晰，对当前的table进行**无条件自循环直到put成功**，可以分成以下六步流程来概述：
+
+  1、判断数组是否初始化，没有则**进行初始化操作**（initTable）；
+
+  2、通过**hash定位数组的索引坐标**，是否有Node节点，如果没有则使用CAS进行添加（链表的头节点），添加失败则进入下次循环。
+
+  3、检查到内部正在扩容，就帮助它一块扩容。
+
+  4、如果哈希冲突了，则**使用synchronized锁住**f元素（链表/红黑树的头元素）。如果是Node（链表结构）则执行链表的添加操作；如果是TreeNode（树型结构）则执行树添加操作。
+
+  5、判断链表长度已经达到临界值8（默认值），当节点超过这个值就需要**把链表转换为树结构**。
+
+  6、如果添加成功就调用addCount() 方法统计size，并且检查是否需要扩容
+
+（即：1.初始化->2.定位->3.非冲突CAS插入->4.帮助扩容->5.冲突synchronized插入->6.扩容）
+
+**ConcurrentHashMap#put()源码：**
+
+```java
+/** Implementation for put and putIfAbsent */
+final V putVal(K key, V value, boolean onlyIfAbsent) {
+    if (key == null || value == null) throw new NullPointerException();
+    //1.计算key的hash值
+    int hash = spread(key.hashCode());
+    int binCount = 0;
+    for (Node<K,V>[] tab = table;;) {
+        Node<K,V> f; int n, i, fh;
+        //2.如果当前table还没有初始化先调用initTable方法将tab进行初始化
+        if (tab == null || (n = tab.length) == 0)
+            tab = initTable();
+        //3.tab中索引为i的位置的元素为null，则直接使用CAS将值插入即可
+        else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {
+            if (casTabAt(tab, i, null,new Node<K,V>(hash, key, value, null)))
+                break;
+        }
+        //4.如果当前正在扩容，则帮助扩容
+        else if ((fh = f.hash) == MOVED)
+            tab = helpTransfer(tab, f);
+        //5.如果哈希冲突了，锁住元素头部
+        else {
+            V oldVal = null;
+            synchronized (f) {
+                //看元素是否已经存在，如果存在的话就覆盖原来的值并返回旧值；
+        		//如果元素不存在，就插入到链表或者红黑树，并且如果链表过长的话还会转为红黑树；
+            }
+        }
+    }
+    //6.对当前容量大小进行检查，如果超过了临界值（实际大小*加载因子）就需要扩容 
+    addCount(1L, binCount);
+    return null;
+}
+
+```
 
 
-
-#### 1.2.2 CcHashMap的put()方法
-
-- ConcurrentHashMap在put()元素时也是先通过对key做hash得到一个索引位置，即数组下标。
-- ConcurrentHashMap在初始化时会通过CAS判断是否正在初始化，如果有线程在初始化则用Thread.yield()方法让出线程，且通过`(tab = table) == null || tab.length == 0`，保证只有一个线程进行初始化。
-- 如果该索引位置上为null，就直接插入该元素。（获取数组i索引用到tabAt，插入用casTabAt，都是CAS操作保持可见）
-- 如果该索引位置上不为null，且当前正在扩容，则帮助扩容。
-- 如果该索引位置上不为null，且不需要帮助扩容，则对本索引处的首节点上synchronized锁，锁住该桶头结点并试图在该链表的尾部添加一个节点。（可能是链表或树结构）
-- 如果节点已经存在就替换旧值。
-- 如果新增操作，则CAS 式更新baseCount，并判断是否需要扩容。
 
 ```
 spread(key.hashcode) -> (h ^ (h >>> 16)) & HASH_BITS，比HashMap的hash()多了一步& HASH_BITS，HASH_BITS是0x7fffffff，该步是为了消除最高位上的负符号 hash的负在ConcurrentHashMap中有特殊意义表示在扩容或者是树节点。
@@ -290,7 +369,7 @@ public class MyAspect {
 
 - 父类引用指向子类对象
 
-  ​
+  
 
 
 ### 1.12 接口和抽象类
@@ -526,7 +605,7 @@ Java 中每个线程都有与之关联的Thread对象，Thread对象中有一个
 
 ### 1.19 线程间通信
 
-​ 线程间通信是有两种机制，一个是共享内存，一个是消息传递。
+ 线程间通信是有两种机制，一个是共享内存，一个是消息传递。
 
 共享内存是一种隐式的通信方式，就是JMM模型定义的那样，线程之间共享一些公共状态，线程通过读或写等操作来影响这些公共状态，实现与其它线程的通信。
 
@@ -974,7 +1053,7 @@ Mysql目前主要有以下几种索引类型：全文索引（FULLTEXT），哈�
 
 - **B+树索引（BTREE）**：
 
-  ​是mysql默认的InnoDb引擎使用的索引，也是我们最常见的索引，可以分为**普通索引、唯一索引、组合索引。**
+  是mysql默认的InnoDb引擎使用的索引，也是我们最常见的索引，可以分为**普通索引、唯一索引、组合索引。**
 
   普通索引：仅加速查询最基本的索引，没有任何限制，是我们大多数情况下使用到的索引。
 
@@ -989,11 +1068,11 @@ CREATE UNIQUE INDEX unindex_name on user_info(name);
 
 - **全文索引（FULLTEXT）**
 
-  ​仅可以适用于MyISAM引擎的数据表；仅可作用于CHAR、VARCHAR、TEXT数据类型的列。它的出现是为了解决WHERE name LIKE '%word%' 这类针对文本的模糊查询效率较低的问题。
+  仅可以适用于MyISAM引擎的数据表；仅可作用于CHAR、VARCHAR、TEXT数据类型的列。它的出现是为了解决WHERE name LIKE '%word%' 这类针对文本的模糊查询效率较低的问题。
 
 - **哈希索引（HASH）**：
 
-  ​是Memory引擎上的索引。HASH索引可以一次定位，不需要像树形索引那样逐层查找,因此具有极高的效率。但是，这种高效是有条件的，即只在“=”和“in”条件下高效，且不支持范围查询、排序及组合索引。另外hash索引中的hash码的计算可能存在hash冲突。当出现hash冲突的时候，存储引擎必须遍历整个链表中的所有行指针，逐行比较，直到找到所有的符合条件的行。
+  是Memory引擎上的索引。HASH索引可以一次定位，不需要像树形索引那样逐层查找,因此具有极高的效率。但是，这种高效是有条件的，即只在“=”和“in”条件下高效，且不支持范围查询、排序及组合索引。另外hash索引中的hash码的计算可能存在hash冲突。当出现hash冲突的时候，存储引擎必须遍历整个链表中的所有行指针，逐行比较，直到找到所有的符合条件的行。
 
 - **空间数据索引（ RTREE）:**
 
@@ -1963,7 +2042,7 @@ DispatcherServlet是一个派发器，即对任意一个web请求都会根据一
 
 7. **RequestResponseBodyMethodProcessor**
 
-   ​**返回值有@ResponseBody注解**
+   **返回值有@ResponseBody注解**
 
 
 
