@@ -75,13 +75,62 @@ String不可变的优点：
 • UTF-8编码则是用以解决国际上字符的一种多字节编码，它对英文使用8位（即一个字节），中文使用24位（三个字节）来编码。
 ```
 
-**Java字符串常量池与intern()方法**
+**Java字符串常量池**
 
-面试时可能经常会有一些比较字符串是否==的题目出现，要理解这些问题必须掌握字符串常量池的概念。
+String有两种赋值方式，
 
-参考：[https://www.cnblogs.com/justcooooode/p/7603381.html](https://www.cnblogs.com/justcooooode/p/7603381.html)
+第一种是通过“**字面量**”赋值。
 
+```java
+String s1 = "abc"; 
+String s2 = "abc"; 
+System.out.println(s1==s2);	//true
+//字面量结论：采用字面值的方式创建一个字符串时，JVM首先会去字符串池中查找是否存在"abc"这个对象，如果不存在，则在字符串池中创建"abc"这个对象，然后将池中"abc"这个对象的引用地址返回给"abc"对象的引用s1，这样s1会指向池中"abc"这个字符串对象；如果存在，则不创建任何对象，直接将池中"abc"这个对象的地址返回，赋给引用s2。因为s1、s2都是指向同一个字符串池中的"abc"对象，所以结果为true。
+```
 
+ 第二种是通过**new**关键字声明创建新对象。
+
+```java
+String s3 = new String("xyz"); 
+String s4 = new String("xyz"); 
+System.out.println(s3==s4); //false
+//new关键字结论：采用new关键字新建一个字符串对象时，JVM首先在字符串池中查找有没有"xyz"这个字符串对象，如果有，则不在池中再去创建"xyz"这个对象了，直接在堆中创建一个"xyz"字符串对象，然后将堆中的这个"xyz"对象的地址返回赋给引用s3，这样，s3就指向了堆中创建的这个"xyz"字符串对象；如果没有，则首先在字符串池中创建一个"xyz"字符串对象，然后再在堆中创建一个"xyz"字符串对象，然后将堆中这个"xyz"字符串对象的地址返回赋给s3引用，这样，s3指向了堆中创建的这个"xyz"字符串对象。s4则指向了堆中创建的另一个"xyz"字符串对象。s3 、s4是两个指向不同对象的引用，结果当然是false。
+```
+
+**Java字符串的intern()方法**
+
+对于**intern()**方法，如果字符串常量池里存在一个和当前字符串对象等价的字符串对象，那么返回字符串常量池里那个对象。如果不存在，把当前字符串对象存进常量池，返回当前字符串对象。使用场景如下：
+
+```java
+String test1 = "abc";
+String test2 = new String("abc");
+String str = test2.intern();
+//字符串引用str，如果直接用str=test2，那么str将指向堆中的字符串对象，而如果使用上面的str=test2.intern()，因为test1已经在常量池创建了"abc"对象，所以intern()后会直接返回常量池里的"abc"对象。此时，堆中的字符串对象"abc"在没有其他引用的情况下，可以进行回收，这是intern()真正的好处.
+```
+
+另外，面试时可能经常会有一些比较字符串是否==的题目出现，要理解这些问题还要掌握以下两点：。
+
+- 对于两个字符串常量“a”+"b"直接做+运算的，不会把这两个字符串放入常量池中，而是直接把运算后的结果"ab"放入。
+- 对于new String("a")+"b"这种用了声明的，会把"a"，“b”都放入常量池，结果“ab”不会直接放入。
+
+```java
+String s1 = "Hello";
+String s2 = "Hello";
+String s3 = "Hel" + "lo";
+String s4 = "Hel" + new String("lo");
+String s5 = new String("Hello");
+String s6 = s5.intern();
+String s7 = "H";
+String s8 = "ello";
+String s9 = s7 + s8;
+//-------结论--------//
+System.out.println(s1 == s2);  // true，因为指向的是同一个地址。s1在创建对象的同时在字符串池中也创建了其引用。
+System.out.println(s1 == s3);  // true，JVM优化，直接存结果，也是同一个地址
+System.out.println(s1 == s4);  // false，不会优化，指向的不是同一个地址。在编译期无法知道"lo"的地址
+System.out.println(s1 == s9);  // false，s7+s8都是变量，不会优化，指向的不是同一个地址。
+System.out.println(s4 == s5);  // false，指向的不是同一个地址
+System.out.println(s1 == s6);  // true，intern()时会返回已经存在的Hello的地址，所以指向同一个。
+```
 
 
 
