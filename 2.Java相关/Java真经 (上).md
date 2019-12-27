@@ -61,7 +61,7 @@ String是final修饰的不可变类，底层是一个final的char数组。JVM在
 
 StringBuilder是可变字符串类，是线程非安全的，效率相比StringBuffer快一些。
 
-StringBuilder是可变字符串类，是线程安全的，效率相比StringBuilder慢一些。
+StringBuffer是可变字符串类，是线程安全的，但效率相比StringBuilder慢一些。
 
 String不可变的优点：
 
@@ -136,6 +136,8 @@ System.out.println(s1 == s6);  // true，intern()时会返回已经存在的Hell
 
 ### 1.3 值传递/引用传递
 
+**值传递/引用传递概念**
+
 - **值传递**
 
     在方法的调用过程中，实参把它的实际值传递给形参，此传递过程就是将实参的值复制一份传递到函数中，这样如果在函数中对该值（形参的值）进行了操作将不会影响实参的值。因为是直接复制，所以这种方式在传递大量数据时，运行效率会特别低下。
@@ -148,8 +150,25 @@ System.out.println(s1 == s6);  // true，intern()时会返回已经存在的Hell
 
     引用传递弥补了值传递的不足，如果传递的数据量很大，直接复过去的话，会占用大量的内存空间，而引用传递就是将对象的地址值传递过去，函数接收的是原始值的首地址值。在方法的执行过程中，形参和实参的内容相同，指向同一块内存地址，也就是说操作的其实都是源数据，所以方法的执行将会影响到实际对象。
 
-```
-对象、数组、StringBuilder、StringBuffer是引用传递
+
+
+**Java只有值传递**
+
+**Java 语言的参数传递只有「按值传递」。**按值传递的精髓是：传递的是存储单元中的内容，而不是存储单元的引用！当一个实例对象作为参数被传递到方法中时，参数的值就是该对象的引用的一个副本。指向同一个对象，对象的内容可以在被调用的方法内改变，但对象的引用(不是引用的副本) 是永远不会改变的。
+
+即Java 的参数传递，不管是基本数据类型还是引用类型的参数，**都是按值传递，没有按引用传递！**
+
+```java
+public static void main(String[] args) {
+	Object o = new Object();
+	System.out.println(o);	//java.lang.Object@1b6d3586
+	change(o);	//方法中将o指向另一个对象java.lang.Object@4554617c
+	System.out.println(o); //因为是值传递，输出还是java.lang.Object@1b6d3586
+}
+
+private static void change(Object o) {
+	o = new Object();	//将形参指向java.lang.Object@4554617c
+}
 ```
 
 
@@ -296,14 +315,20 @@ ConcurrentHashmap重要方法、参数：
 
 
 
-### 1.6 CAS
+### 1.6 CAS/AQS
 
 **CAS概念**
 
-​	CAS，全称Compare And Swap（比较与交换），是解决多线程并行情况下使用锁造成性能损耗的一种机制。实现思想 CAS（V, A, B），V为内存地址、A为预期原值，B为新值。如果内存地址的值与预期原值相匹配，那么将该位置值更新为新值。否则，说明已经被其他线程更新，处理器不做任何操作。我们可以循环CAS读取变量A，循环中尝试修改或放弃操作。
+​    CAS，全称Compare And Swap（比较与交换），是解决多线程并行情况下使用锁造成性能损耗的一种机制。传统的synchronized是悲观锁，而CAS是乐观锁。 CAS通过调用JNI的代码实现的，如compareAndSwapInt就是借助C来调用CPU底层指令实现的。
+
+​    CAS的实现思想 有三个重要参数（V, A, B），V为内存地址、A为预期原值，B为新值。如果内存地址的值与预期原值相匹配，那么将该位置值更新为新值。否则，说明已经被其他线程更新，处理器不做任何操作。我们可以循环CAS读取变量A，循环中尝试修改或放弃操作。
 
 ```
 Java中的CAS操作都是通过sun包下Unsafe类实现，而Unsafe类中的方法都是native方法。
+使用CAS可分为以下三步：
+首先，声明共享变量为volatile，保证线程间的数据是可见的；
+然后，使用CAS的原子条件更新来实现线程之间的同步；（如 ++i的核心：compareAndSet(current, current+1)）
+同时，配合以volatile的读/写和CAS所具有的volatile读和写的内存语义来实现线程之间的通信。
 ```
 
 **CAS几个缺点**：
@@ -315,6 +340,45 @@ Java中的CAS操作都是通过sun包下Unsafe类实现，而Unsafe类中的方�
 
 
 - **只能保证一个共享变量的原子操作**。当对一个共享变量执行操作时，我们可以使用循环CAS的方式来保证原子操作，但是对多个共享变量操作时，循环CAS就无法保证操作的原子性。这个问题的解决方法是可以用锁，或者有一个取巧的办法，就是把多个共享变量合并成一个共享变量来操作。比如有两个共享变量i＝2,j=a，合并一下ij=2a，然后用CAS来操作ij。从JDK1.5开始提供了AtomicReference类来保证引用对象之间的原子性，你可以把多个变量放在一个对象里来进行CAS操作。
+
+**AQS概念**
+
+​    所谓AQS，指的是AbstractQueuedSynchronizer，它提供了一种实现阻塞锁和一系列依赖FIFO等待队列的同步器的框架，ReentrantLock、Semaphore、CountDownLatch、CyclicBarrier等并发类均是基于AQS来实现的，具体用法是通过继承AQS实现其模板方法，然后将子类作为同步组件的内部类。
+
+AQS基本框架如下图所示：
+
+![img](https://upload-images.jianshu.io/upload_images/10431632-7d2aa48b9b217bbe.jpg?imageMogr2/auto-orient/strip|imageView2/2/w/794/format/webp)
+
+​    AQS维护了一个FIFO线程等待队列，多线程竞争下state被阻塞时会进入此队列。和维护了一个volatile修饰的变量**state**，该属性是一个int值，表示对象的当前状态（如0表示lock，1表示unlock）。AQS提供了三个protected final的方法来改变state的值，分别是：getState、setState(int)、compareAndSetState(int, int)。根据修饰符，它们是不可以被子类重写的，但可以在子类中进行调用，这也就意味着子类可以根据自己的逻辑来决定如何使用state值。
+
+AQS的子类应当被定义为内部类，作为内部的helper对象。事实上，这也是juc种锁的做法，如ReentrantLock，便是通过内部的Sync对象来继承AQS的。
+
+```java
+public class ReentrantLock implements Lock, java.io.Serializable {
+	private final Sync sync;
+    abstract static class Sync extends AbstractQueuedSynchronizer { ... }
+}
+```
+
+
+
+**资源的共享方式分为2种：**
+
+- 独占式(Exclusive)
+
+只有单个线程能够成功获取资源并执行，如ReentrantLock。
+
+- 共享式(Shared)
+
+多个线程可成功获取资源并执行，如Semaphore/CountDownLatch等。
+
+AQS将大部分的同步逻辑均已经实现好，继承的自定义同步器只需要实现state的获取(acquire)和释放(release)的逻辑代码就可以，主要包括下面方法：
+
+- tryAcquire(int)：独占方式。尝试获取资源，成功则返回true，失败则返回false。
+- tryRelease(int)：独占方式。尝试释放资源，成功则返回true，失败则返回false。
+- tryAcquireShared(int)：共享方式。尝试获取资源。负数表示失败；0表示成功，但没有剩余可用资源；正数表示成功，且有剩余资源。
+- tryReleaseShared(int)：共享方式。尝试释放资源，如果释放后允许唤醒后续等待结点返回true，否则返回false。
+- isHeldExclusively()：该线程是否正在独占资源。只有用到condition才需要去实现它。
 
 
 
@@ -578,7 +642,7 @@ synchronized和Lock区别：
 
 •	线程池，这个还是很重要的，在生产中用的挺多，四个线程池类型，其参数，参数的理解很重要，corepoolSize怎么设置，maxpoolsize怎么设置，keep-alive各种的，和美团面试官探讨过阻塞队列在生产中的设置，他说他一般设置为0，防止用户阻塞
 
-#### 1.17.1 线程池优点
+#### 1.17.1 线程池概念
 
 ​	在没用线程池之前，我们是需要使用线程就去创建一个，实现起来也很简单，但是问题如果并发的线程数量很多，而且每个线程执行的时间又比较短的话，系统就会很频繁地创建，切换和销毁线程，这都是很耗时间的，会降低系统的效率。线程池的主要目的是为了达到一个资源复用的效果。
 
