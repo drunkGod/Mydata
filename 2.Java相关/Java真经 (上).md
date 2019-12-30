@@ -696,9 +696,108 @@ public class MyAspect {
 
 ​    **消息传递**则是一种显示的通信方式，就是我们通过wait()、notify()/notifyAll()这种显示的调用的方式发送消息，实现通信。这种显示的通信方式除了wait()、notify()/notifyAll()外，还有thread.join()，CountdownLatch，CyclicBarrier，FutureTask/Callable，condition.await() / condition.signal()等等。目的就是为了更直观更方便地控制线程执行的顺序，达到我们需要的效果。
 
+```java
+//一般说的synchronized用来做多线程同步功能，其实synchronized只是提供多线程互斥，而对象的wait()和notify()方法才提供线程的同步功能。Java 1.8 HotSpot把notify()实现为公平的方式（先睡者先唤醒），而不是随机的方式。
+//通过join()/yield()等可以实现一定的执行顺序，而static + synchronized + wait() + notify()可实现任意线程顺序：
+private static int ThreadOrder = 0;	//控制执行顺序（因为几个线程的start()会有重排序和时间切片的可能）
+private static final Object lock = new Object();
+public static void main(String[] args) throws Exception {
+	System.out.println("static + 锁 + wait() + notify()实现三个线程轮流执行：");
+	Thread t1 = new Thread(new Runnable() {
+		public void run() {
+			try {
+				synchronized (lock) {
+					for (int i = 1; i <= 3; i++) {
+						System.out.println("线程t1获得锁，t1：" + i);
+						Thread.sleep(1000);
+						if (i == 1) {
+							ThreadOrder = 1;
+							lock.wait();    //T1输出1后，T1睡去，让锁给T2
+						}
+						if (i == 2) {
+							lock.notify();  //T1输出2时，T2、T3仍在沉睡，此时T1唤醒T2
+							lock.wait();    //T1唤醒T2后睡去，T2将会获得锁。
+						}
+						if (i == 3) {
+							lock.notify();   //T1输出3时，T2、T3仍在沉睡，T1唤醒T2，T1线程结束
+						}
+					}
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	});
+
+	Thread t2 = new Thread(new Runnable() {
+		public void run() {
+			synchronized (lock) {
+				try {
+					for (int i = 1; i <= 3; i++) {
+						System.out.println("线程t2获得锁，t2：" + i);
+						Thread.sleep(1000);
+						if (i == 1) {
+							ThreadOrder = 2;
+							lock.wait();    //T2输出1后，T2睡去，让锁给T3
+						}
+						if (i == 2) {
+							lock.notify();   //T2输出2时，T1、T3仍在沉睡，T2唤醒T3
+							lock.wait();    //T2唤醒T3后睡去，T3将会获得锁。
+						}
+						if (i == 3) {
+							lock.notify();   //T2输出3时，T3仍在沉睡，T2唤醒T3，T3线程结束
+						}
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	});
+
+	Thread t3 = new Thread(new Runnable() {
+		public void run() {
+			synchronized (lock) {
+				try {
+					for (int i = 1; i <= 3; i++) {
+						System.out.println("线程t3获得锁，t3：" + i);
+						Thread.sleep(1000);
+						if (i == 1) {
+							ThreadOrder = 3;
+							lock.notify();  //T3输出1后，唤醒T1
+							lock.wait();    //此时T2、T3睡去，T1会得到锁
+						}
+						if (i == 2) {
+							lock.notify();   //T3输出2时，T1、T2仍在沉睡，T3唤醒T1
+							lock.wait();    //T3唤醒T1后睡去，T1将会获得锁。
+						}
+						if (i == 3) {
+							//T3输出3时，T3结束，三个线程执行结束
+						}
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	});
+
+	t1.start();
+
+	while(ThreadOrder != 1) {
+		Thread.sleep(500);
+	}
+	t2.start();
+
+	while(ThreadOrder != 2) {
+		Thread.sleep(500);
+	}
+	t3.start();
+}
+//结果：t1：1 -> t2：1 -> t3：1 -> t1：2 -> t2：2 -> t3：2 -> t1：3 -> t2：3 -> t3：3
 ```
-一般说的synchronized用来做多线程同步功能，其实synchronized只是提供多线程互斥，而对象的wait()和notify()方法才提供线程的同步功能。
-```
+
+
 
 ### 1.14 synchronized 
 
