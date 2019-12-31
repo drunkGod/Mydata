@@ -511,52 +511,7 @@ LinkedList<E> extends AbstractSequentialList<E> implements List<E>, Deque<E>, Cl
 
 
 
-
-
-### 1.9 泛型
-
-•  什么是泛型，怎么用泛型
-
-**什么是泛型**
-
-顾名思义，就是**将具体的类型参数化，然后在使用时才传入具体的类型，比如用参数<T>来表示。**
-
-**Java中的泛型，只在编译阶段有效。**在编译过程中，正确检验泛型结果后，会将泛型的相关信息带出，泛型信息不会进入到运行时阶段。
-
-**泛型的使用方式**
-
-泛型有三种使用方式，分别为：泛型类、泛型接口、泛型方法
-
-泛型类：
-
-```java
-public class Generic<T>{ ... }
-```
-
-泛型接口：
-
-```java
-public interface Generator<T> {
-    public T next();
-}
-```
-
-泛型方法：
-
-```java
-//普通泛型方法
-public <T> String genericMethod(T t) {
-  return t.getClass().getName();
-}
-//静态泛型方法
-public static <T> String genericMethod(T t) {
-  return t.getClass().getName();
-}
-```
-
-
-
-### 1.10 继承/多态
+### 1.9 继承/多态/泛型
 
 • 继承、多态的概念、原理是什么，感觉这个很容易被问到
 
@@ -606,11 +561,46 @@ public static <T> String genericMethod(T t) {
 
 
 
+**泛型的感念**
+
+泛型，顾名思义，就是**将具体的类型参数化，然后在使用时才传入具体的类型，比如用参数<T>来表示。**
+
+**Java中的泛型，只在编译阶段有效。**在编译过程中，正确检验泛型结果后，会将泛型的相关信息带出，泛型信息不会进入到运行时阶段。
+
+**泛型的使用方式**
+
+泛型有三种使用方式，分别为：泛型类、泛型接口、泛型方法
+
+泛型类：
+
+```java
+public class Generic<T>{ ... }
+```
+
+泛型接口：
+
+```java
+public interface Generator<T> {
+    public T next();
+}
+```
+
+泛型方法：
+
+```java
+//普通泛型方法
+public <T> String genericMethod(T t) {
+  return t.getClass().getName();
+}
+//静态泛型方法
+public static <T> String genericMethod(T t) {
+  return t.getClass().getName();
+}
+```
 
 
 
-
-### 1.11 接口/抽象类
+### 1.10 接口/抽象类
 
 • 接口和抽象类
 
@@ -628,15 +618,17 @@ public static <T> String genericMethod(T t) {
 
 - 如果你的接口中有很多方法，你对它们的实现又比较清晰，可以考虑提供一个抽象类作为默认实现
 - 如果你考虑描述一种行为，比如会飞的会跑的，就定义成接口
-- 如果你考虑描述一种抽象的事物，但是没有一个具体概念，比如交通工具定义为抽象类
+- 如果你有很多可以默认的实现，并且又需要其他特殊的实现，可以定义为抽象类
 
 
 
-### 1.12 反射/注解  
+### 1.11 反射/注解  
 
 **反射：**
 
 一般是通过Class.forName()方法拿到class对象；
+
+通过class对象的new Instance方法构造出一个反射的对象；
 
 通过class对象的cls.getMethods()、cls.getDeclaredMethods()可以获取该类对应的方法；
 
@@ -645,10 +637,28 @@ public static <T> String genericMethod(T t) {
 通过class对象属性或方法的cls.getDeclaredAnnotations()可以获取上面注解；
 
 ```java
-method.invoke(per,null);	//获取方法后可以通过invoke()来调用该方法
-idField.setAccessible(true);	//获取属性后可以通过setAccessible()修改属性的访问权限
-idField.set(per, 1); 	//获取属性后可以通过set()给该对象属性赋值
-Annotation[] anns = field.getDeclaredAnnotations();	//获取属性上面的注解
+Class<?> aClass = Class.forName("com.lcl.edemo.utils.MyReflect");
+MyReflect refObj = (MyReflect)aClass.newInstance();
+Field selfDefPro = aClass.getDeclaredField("selfDefPro");
+selfDefPro.setAccessible(true);
+selfDefPro.set(refObj, "newRefName");
+Method selfDefMethod = aClass.getDeclaredMethod("selfDefMethod", String.class);
+String callRefMethodResult = (String) selfDefMethod.invoke(refObj, "哈哈哈");
+System.out.println(callRefMethodResult);
+
+//final属性的反射
+public static final String FINAL_NAME;
+static {
+    FINAL_NAME = "old Value";
+}
+//如上，如果直接对final属性赋值，则反射无法修改；如果是在static块中赋值的话，则反射可以修改；
+Field field = TitleConstant.class.getDeclaredField("FINAL_NAME");
+field.setAccessible(true);
+// 去除final修饰符
+Field modifiers_field = Field.class.getDeclaredField("modifiers");
+modifiers_field.setAccessible(true);
+modifiers_field.set(field, field.getModifiers() & ~Modifier.FINAL);
+field.set(this, "new Value");
 ```
 
 **注解：**
@@ -677,6 +687,102 @@ public class MyAspect {
 
 
 
+### 1.12 多线程
+
+**进程和线程**
+
+- **进程** - 进程是具有一定独立功能的程序（例如QQ.exe），关于某个数据集合上的一次运行活动，进程是系统进行资源分配和调度的一个独立单位。
+- **线程** - 线程是进程的一个实体，是CPU调度和分派的基本单位，它是比进程更小的能独立运行的基本单位；线程自己基本上不拥有系统资源，只拥有一点在运行中必不可少的资源(如程序计数器，一组寄存器和栈)，但是它可共享进程所拥有的全部资源。
+
+​        相对进程而言，线程是一个更加接近于执行体的概念，它可以与同进程中的其他线程共享数据，但拥有自己的栈空间，拥有独立的执行序列。
+
+**多线程使用场景**
+
+- 耗时的计算；
+
+- 耗时的IO；
+
+- 需要异步解耦。
+
+**多线程状态/生命周期**
+
+线程有创建，可运行，运行中，阻塞，消亡五种状态。
+
+新建： 继承Thread | 实现Runnable()接口| 实现Callable接口 | ExecutorService
+
+可运行： 新建的线程调用start() | 运行中的线程时间片用完 | 运行中的线程调用yield() | 从阻塞或锁池状态恢复
+
+运行： 操作系统调度选中
+
+阻塞： 等待用户输入 | sleep() | join()
+
+消亡： run() | main() 方法运行结束。
+
+```
+Runnable()和Callable接口区别：Callable的run()有返回值，并可以抛出异常。
+Callable的返回值是一个FutureTask对象，有isDone()/cancel()/get()/get(time, unit)等实用的方法。
+```
+
+```java
+public class ThreadTest {
+
+    public static void main(String[] args) throws Exception {
+        System.out.println("主线程" + Thread.currentThread().getName() + "开始运行。。");
+        //方式1：继承Thread类实现多线程
+        Thread th1 = new MyThreadOne();
+        th1.start();
+        //方式2：实现Runable接口实现多线程
+        Thread th2 = new Thread(new MyThreadTwo());
+        th2.start();
+        //方式3：实现Callbble接口实现多线程
+        //3.1 使用FutureTask类作为中间类连接Callable与Thread
+        FutureTask<String> result = new FutureTask<String>(new MyThreadThree());
+        Thread th3 = new Thread(result);
+        th3.start();
+        //3.2 使用FutureTask类的get()等待线程执行结束，接收线程运算后的结果，或使用cancel方法取消等待
+        Thread.sleep(5000);
+        if (!result.isDone()) {
+            System.out.println("一段时间后" + th3.getName() + "仍未done,我就cancel");
+            result.cancel(true);
+        }
+        if (!result.isCancelled()) {
+            //如果未取消，我则阻塞等待线程执行结果,另get(time,unit)超时会抛出TimeoutException
+            String sum = result.get();    
+            System.out.println(sum);
+        }
+        System.out.println("主线程" + Thread.currentThread().getName() + "结束运行。。");
+    }
+}
+
+class MyThreadOne extends Thread {
+    @Override
+    public void run() {
+        System.out.println("--多线程" + Thread.currentThread().getName() + "开始运行。。");
+        System.out.println("--多线程" + Thread.currentThread().getName() + "结束运行。。");
+    }
+}
+
+class MyThreadTwo implements Runnable {
+    public void run() {
+        System.out.println("--多线程" + Thread.currentThread().getName() + "开始运行。。");
+        System.out.println("--多线程" + Thread.currentThread().getName() + "结束运行。。");
+    }
+}
+
+class MyThreadThree implements Callable {
+
+    public Object call() throws Exception {
+        System.out.println("--多线程" + Thread.currentThread().getName() + "开始运行。。");
+        Thread.sleep(3000);
+        System.out.println("--多线程" + Thread.currentThread().getName() + "结束运行。。");
+
+        return "--多线程" + Thread.currentThread().getName() + "结束时间 " + new SimpleDateFormat("HH:mm:ss").format(new Date());
+    }
+}
+```
+
+
+
 
 ### 1.13 Java内存模型
 
@@ -686,7 +792,36 @@ public class MyAspect {
 
 ​    Java内存模型（JMM）就是一组规则，它规定了多个线程之间的通信方式与通信细节。
 
-​    首先，JMM规定了所有的变量都存储在主内存中，每个线程都有自己的工作内存，线程需要使用到的变量，都会从主内存拷贝一份副本到自己的工作内存中，线程对变量的读写操作都是在自己的工作内存中进行，而不能直接读写主内存中的变量。不同线程之间无法直接访问对方工作内存中的变量，线程间变量值的传递需要通过主内存来完成。
+​    首先，JMM规定了
+
+1. 所有的变量都存储在主内存中，每个线程都有自己的工作内存。（主内存=堆，每个线程=栈）
+2. 线程需要使用到的变量，都会从主内存拷贝一份副本到自己的工作内存中。
+3. 线程对变量的读写操作都是在自己的工作内存中进行，而不能直接读写主内存中的变量。
+4. 不同线程之间无法直接访问对方工作内存中的变量。
+5. 线程间变量值的传递需要通过主内存来完成。
+
+（总结就是：分主存/工作内存；线程从主存拷变量到工存操作，线程间变量不能直接访问，是通过主存传递）
+
+![img](https://img-blog.csdnimg.cn/20191029105807363.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L0hlbGxvV29ybGRfSW5fSmF2YQ==,size_16,color_FFFFFF,t_70)
+
+
+
+**Happens-Before概念**
+
+​       JMM是围绕着并发编程中的**原子性、可见性、有序性**这三个特征来建立的。JMM使用Happens-Before的概念来阐述操作之间的内存可见性。happens-before就是先行发生原则：**如果一个操作先发生于第二个操作，则第一个操作对第二个操作是可见的，并且一定发生在第二个操作之前。**
+
+先行发生原则的几个重要原则如下：
+
+- 线程内部规则：在同一个线程内，前面操作的执行结果对后面的操作是可见的。
+
+- 同步规则：如果一个操作x与另一个操作y在同步代码块/同步方法中，那么操作x的执行结果对操作y可见。
+- 传递规则：如果操作x的执行结果对操作y可见，操作y的执行结果对操作z可见，则操作x的执行结果对操作z可见。
+- 对象锁规则：如果线程1解锁了对象锁a，接着线程2锁定了a，那么，线程1解锁a之前的写操作的执行结果都对线程2可见。
+
+- **volatile变量规则：如果线程1写入了volatile变量v，接着线程2读取了v，那么，线程1写入v及之前的写操作的执行结果都对线程2可见。**
+- 线程start原则：如果线程t在start()之前进行了一系列操作，接着进行了start()操作，那么线程t在start()之前的所有操作的执行结果对start()之后的所有操作都是可见的。
+- 线程join规则：线程t1写入的所有变量，在任意其它线程t2调用t1.join()成功返回后，都对t2可见。
+  
 
 **线程间通信**
 
@@ -696,105 +831,121 @@ public class MyAspect {
 
 ​    **消息传递**则是一种显示的通信方式，就是我们通过wait()、notify()/notifyAll()这种显示的调用的方式发送消息，实现通信。这种显示的通信方式除了wait()、notify()/notifyAll()外，还有thread.join()，CountdownLatch，CyclicBarrier，FutureTask/Callable，condition.await() / condition.signal()等等。目的就是为了更直观更方便地控制线程执行的顺序，达到我们需要的效果。
 
+**注：join()/yield()可以实现一定的执行顺序，而static + synchronized + wait() + notify()可实现线程任意顺序**
+
 ```java
-//一般说的synchronized用来做多线程同步功能，其实synchronized只是提供多线程互斥，而对象的wait()和notify()方法才提供线程的同步功能。Java 1.8 HotSpot把notify()实现为公平的方式（先睡者先唤醒），而不是随机的方式。
-//通过join()/yield()等可以实现一定的执行顺序，而static + synchronized + wait() + notify()可实现任意线程顺序：
-private static int ThreadOrder = 0;	//控制执行顺序（因为几个线程的start()会有重排序和时间切片的可能）
-private static final Object lock = new Object();
-public static void main(String[] args) throws Exception {
-	System.out.println("static + 锁 + wait() + notify()实现三个线程轮流执行：");
-	Thread t1 = new Thread(new Runnable() {
-		public void run() {
-			try {
-				synchronized (lock) {
-					for (int i = 1; i <= 3; i++) {
-						System.out.println("线程t1获得锁，t1：" + i);
-						Thread.sleep(1000);
-						if (i == 1) {
-							ThreadOrder = 1;
-							lock.wait();    //T1输出1后，T1睡去，让锁给T2
-						}
-						if (i == 2) {
-							lock.notify();  //T1输出2时，T2、T3仍在沉睡，此时T1唤醒T2
-							lock.wait();    //T1唤醒T2后睡去，T2将会获得锁。
-						}
-						if (i == 3) {
-							lock.notify();   //T1输出3时，T2、T3仍在沉睡，T1唤醒T2，T1线程结束
-						}
-					}
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-	});
+//一般说的synchronized用来做多线程同步功能，其实synchronized只是提供多线程互斥，而对象的wait()和notify()方法才提供了线程的同步功能。Jdk1.8 HotSpot把notify()实现为公平的方式（先睡者先唤醒）而非随机。
+public class ThreadTest {
+    private static int ThreadOrder = 0;    //控制执行顺序，防止start()因重排序而乱序
+    private static final Object lock = new Object();	//锁对象
 
-	Thread t2 = new Thread(new Runnable() {
-		public void run() {
-			synchronized (lock) {
-				try {
-					for (int i = 1; i <= 3; i++) {
-						System.out.println("线程t2获得锁，t2：" + i);
-						Thread.sleep(1000);
-						if (i == 1) {
-							ThreadOrder = 2;
-							lock.wait();    //T2输出1后，T2睡去，让锁给T3
-						}
-						if (i == 2) {
-							lock.notify();   //T2输出2时，T1、T3仍在沉睡，T2唤醒T3
-							lock.wait();    //T2唤醒T3后睡去，T3将会获得锁。
-						}
-						if (i == 3) {
-							lock.notify();   //T2输出3时，T3仍在沉睡，T2唤醒T3，T3线程结束
-						}
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		}
-	});
+    public static void main(String[] args) throws Exception {
+        System.out.println("static + synchronized + wait() + notify()实现线程轮流执行：");
+        Thread t1 = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    synchronized (lock) {
+                        for (int i = 1; i <= 3; i++) {
+                            System.out.println("线程t1获得锁，t1：" + i);
+                            Thread.sleep(1000);
+                            if (i == 1) {
+                                ThreadOrder = 1;
+                                lock.wait();    //T1输出1后，T1睡去，让锁给T2
+                            }
+                            if (i == 2) {
+                                lock.notify();  //T1输出2时，T2、T3仍在沉睡，此时T1唤醒T2
+                                lock.wait();    //T1唤醒T2后睡去，T2将会获得锁。
+                            }
+                            if (i == 3) {
+                                lock.notify();   //T1输出3时，T2、T3仍在沉睡，T1唤醒T2后结束
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
 
-	Thread t3 = new Thread(new Runnable() {
-		public void run() {
-			synchronized (lock) {
-				try {
-					for (int i = 1; i <= 3; i++) {
-						System.out.println("线程t3获得锁，t3：" + i);
-						Thread.sleep(1000);
-						if (i == 1) {
-							ThreadOrder = 3;
-							lock.notify();  //T3输出1后，唤醒T1
-							lock.wait();    //此时T2、T3睡去，T1会得到锁
-						}
-						if (i == 2) {
-							lock.notify();   //T3输出2时，T1、T2仍在沉睡，T3唤醒T1
-							lock.wait();    //T3唤醒T1后睡去，T1将会获得锁。
-						}
-						if (i == 3) {
-							//T3输出3时，T3结束，三个线程执行结束
-						}
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		}
-	});
+        Thread t2 = new Thread(new Runnable() {
+            public void run() {
+                synchronized (lock) {
+                    try {
+                        for (int i = 1; i <= 3; i++) {
+                            System.out.println("线程t2获得锁，t2：" + i);
+                            Thread.sleep(1000);
+                            if (i == 1) {
+                                ThreadOrder = 2;
+                                lock.wait();    //T2输出1后，T2睡去，让锁给T3
+                            }
+                            if (i == 2) {
+                                lock.notify();   //T2输出2时，T1、T3仍在沉睡，T2唤醒T3
+                                lock.wait();    //T2唤醒T3后睡去，T3将会获得锁。
+                            }
+                            if (i == 3) {
+                                lock.notify();   //T2输出3时，T3仍在沉睡，T2唤醒T3，T2线程结束
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
 
-	t1.start();
+        Thread t3 = new Thread(new Runnable() {
+            public void run() {
+                synchronized (lock) {
+                    try {
+                        for (int i = 1; i <= 3; i++) {
+                            System.out.println("线程t3获得锁，t3：" + i);
+                            Thread.sleep(1000);
+                            if (i == 1) {
+                                ThreadOrder = 3;
+                                lock.notify();  //T3输出1后，唤醒T1
+                                lock.wait();    //此时T2、T3睡去，T1会得到锁
+                            }
+                            if (i == 2) {
+                                lock.notify();   //T3输出2时，T1、T2仍在沉睡，T3唤醒T1
+                                lock.wait();    //T3唤醒T1后睡去，T1将会获得锁。
+                            }
+                            if (i == 3) {
+                                //T3输出3时，T3结束，三个线程执行结束
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
 
-	while(ThreadOrder != 1) {
-		Thread.sleep(500);
-	}
-	t2.start();
+        t1.start();
 
-	while(ThreadOrder != 2) {
-		Thread.sleep(500);
-	}
-	t3.start();
+        while (ThreadOrder != 1) {
+            Thread.sleep(500);
+        }
+        t2.start();
+
+        while (ThreadOrder != 2) {
+            Thread.sleep(500);
+        }
+        t3.start();
+    }
+
 }
-//结果：t1：1 -> t2：1 -> t3：1 -> t1：2 -> t2：2 -> t3：2 -> t1：3 -> t2：3 -> t3：3
+/**结果：
+static + synchronized + wait() + notify()实现三个线程轮流执行：
+线程t1获得锁，t1：1
+线程t2获得锁，t2：1
+线程t3获得锁，t3：1
+线程t1获得锁，t1：2
+线程t2获得锁，t2：2
+线程t3获得锁，t3：2
+线程t1获得锁，t1：3
+线程t2获得锁，t2：3
+线程t3获得锁，t3：3
+**/
 ```
 
 
@@ -817,14 +968,43 @@ public static void main(String[] args) throws Exception {
 
 volatile也是java中的一个关键字，加入volatile关键字时，编译后的底层代码会多出一个lock前缀指令。这个lock前缀指令实际上相当于一个内存屏障，内存屏障会提供3个功能：
 
-1. 它确保指令重排序时不会把其后面的指令排到内存屏障之前的位置，也不会把前面的指令排到内存屏障的后面；即在执行到内存屏障这句指令时，在它前面的操作已经全部完成；
+1. 防止重排序：它确保指令重排序时不会把其后面的指令排到内存屏障之前的位置，也不会把前面的指令排到内存屏障的后面；即在执行到内存屏障这句指令时，在它前面的操作已经全部完成；
 
-2. 它会强制将对缓存的修改操作立即写入主存；
+2. 立即写主存：它会强制将对缓存的修改操作立即写入主存；
 
-3. 如果是写操作，它会导致其他CPU中对应的缓存行无效。其它线程因为缓存失效所以会重读主内存拿到它修改后的值。
-
+3. 另其他缓存无效：如果是写操作，它会导致其他CPU中对应的缓存行无效。其它线程因为缓存失效所以会重读主内存拿到它修改后的值。
 
 也就是说volatile能保证线程之间的可见性与原子性。值得注意的是它并不能保证复合操作的原子性。如自增自减操作。
+
+```java
+//典型的双重校验锁实例（DCL）用volatile修饰：
+public class SingleTon {
+    private static volatile SingleTon instance = null;	//volatile来确保instance初始完成。
+
+    private SingleTon(){}
+
+    public static SingleTon getInstance() {
+        if(instance == null){	//第一个校验，是为了代码提高性能，使初始化后不用再去竞争锁。
+            synchronized(SinleTon.class){
+                if(instance == null){	//第二个校验是为了防止重复创建实例
+                    instance = new SingleTon();
+                }  
+            }
+        }
+        return instance ;
+    }
+}
+/**
+分析：
+    第一次校验：由于单例模式只需要创建一次实例，如果后面再次调用getInstance方法时，则直接返回之前创建的实例，因此大部分时间不需要执行同步方法里面的代码，大大提高了性能。如果不加第一次校验的话，那跟上面的懒汉模式没什么区别，每次都要去竞争锁。
+    第二次校验：如果没有第二次校验，假设线程T1执行了第一次校验后，判断为null，这时T2也获取了CPU执行权，也执行了第一次校验，判断也为null。接下来T2获得锁，创建实例。这时T1又获得CPU执行权，由于之前已经进行了第一次校验，结果为null（不会再次判断），获得锁后，直接创建实例。结果就会导致创建多个实例。所以需要在同步代码里面进行第二次校验，如果实例为空，才进行创建。
+    需要注意的是，private static volatile SingleTon instance=null;需要加volatile关键字，否则会出现错误。问题的原因在于JVM指令重排优化的存在。因为instance = new Singleton() 这句话可以分为三步：
+    1. 为 instance 分配内存空间；
+    2. 初始化 instance；
+    3. 将 instance 指向分配的内存空间。
+    在某个线程创建单例对象时，在构造方法被调用之前，就为该对象分配了内存空间并将对象的字段设置为默认值。此时就可以将分配的内存地址赋值给instance字段了，然而该对象可能还没有初始化。若紧接着另外一个线程来调用getInstance，取到的就是初始化一半的对象，程序就会出错。
+**/
+```
 
 
 
