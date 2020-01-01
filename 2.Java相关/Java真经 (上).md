@@ -821,7 +821,7 @@ class MyThreadThree implements Callable {
 - **volatile变量规则：如果线程1写入了volatile变量v，接着线程2读取了v，那么，线程1写入v及之前的写操作的执行结果都对线程2可见。**
 - 线程start原则：如果线程t在start()之前进行了一系列操作，接着进行了start()操作，那么线程t在start()之前的所有操作的执行结果对start()之后的所有操作都是可见的。
 - 线程join规则：线程t1写入的所有变量，在任意其它线程t2调用t1.join()成功返回后，都对t2可见。
-  
+
 
 **线程间通信**
 
@@ -838,7 +838,9 @@ class MyThreadThree implements Callable {
 public class ThreadTest {
     private static int ThreadOrder = 0;    //控制执行顺序，防止start()因重排序而乱序
     private static final Object lock = new Object();	//锁对象
-
+ 	
+    //private byte[] o = new byte[0]; //一种性能更好的锁写法。说明：零长度的byte数组对象创建起来将比任何对象都经济――查看编译后的字节码：生成零长度的byte[]对象只需3条操作码，而Object lock = new Object()则需要7行操作码。
+  
     public static void main(String[] args) throws Exception {
         System.out.println("static + synchronized + wait() + notify()实现线程轮流执行：");
         Thread t1 = new Thread(new Runnable() {
@@ -959,6 +961,45 @@ static + synchronized + wait() + notify()实现三个线程轮流执行：
 ​	synchronized的用法也很简单，它可以修饰普通方法、静态方法和代码块。
 
 ​	当一个线程想调用synchronized修饰的方法或代码块时，它必须要获取对应的锁才能够执行。比如多个线程同时调用一个同步方法，那么这多个线程就会去抢调用这个同步方法的实例对象对应的锁，抢到这个锁的线程就可以执行这个方法，没抢到的线程就会进入一个同步队列，等到抢到锁的线程释放锁（执行结束|出现异常|yeid()|wait()等）后，同步队列中的线程就继续争抢对象锁。如此循环，这就保证了同一时刻只有一个线程在执行这段代码。也是通过这种方式实现同步和线程安全，也保证了线程之间的可见性和原子性。
+
+```java
+对于synchronized要明白两个问题，①锁的对象是谁；②谁持有了锁。只有竞争相同的锁对象时才会进行排队，否则不影响。
+
+问题1：一个类里定义两个synchronized方法，起两个线程，同一个锁对象，a线程访问1方法，b线程访问2方法会怎么样？
+答：同一个锁对象时，如果a线程先获得锁，那么就是a线程执行1方法结束后，释放锁给b线程，b线程才能执行2方法。
+  
+问题2：在synchronized同步方法调用另一个synchronized同步方法，持锁对象、持锁情况如何？
+public synchronized void methodA(int a, int b) {};
+
+public synchronized void methodB(int a）{
+    methodA(a, 0);
+}
+答：
+以上有三种情况：
+（1）假设方法A和B是在同一个类Test中的两个方法。
+Test t = new Test(); 
+t.methodB();
+这个时候，当前线程中methodB方法被调用时，因为加了synchronized ，需要先获得一个锁，这个锁的对象是当前对象t，也就是当前的这个Test类的实例，而获得锁的东西是线程，也就是说当前线程拿到了t的锁（而不是B方法获得锁），这个时候B方法内调用methodA，因为A也加了synchronized，也需要获得一个锁，因为A和B都是Test类中的方法，所以当前线程要获得的锁的对象也是t。由于当前线程在执行B方法时已经持有了t对象的锁，因此这时候调用methodA是没有任何影响的，相当于方法A上没有加synchronized。
+加在非static方法上的synchronized方法是和synchronized（this）块等价的，均为对象锁，即对this加锁。获得当前对象锁的线程，可以继续获得当前对象锁，JVM负责跟踪对象被加锁的次数。线程运行B方法，此时如果this锁可以用，线程获得该锁，线程给对象加锁，计数器变成1，然后B方法调用A方法，由于是对同一个对象同一个线程，线程可以继续获得锁，计数器变为2，表示this被加锁2次。A方法完毕后，线程释放锁，计数器变为1，此时对象锁对其他线程依然是不可获得的。B方法完毕后，线程继续释放锁，此时计数器变为0，表示锁被完全释放，其他线程可以获得对象锁。
+
+（2）假设现在有两个Test类
+//线程1中：
+Test t1 = new Test(); 
+t1.methodB(); //此时当前线程持有了t1对象的锁
+//线程2中：
+Test t2 = new Test(); 
+t2.methodB(); //此时当前线程也持有了t2对象的锁
+当前线程持有了两把锁，锁的对象分别是两个不同的Test类的实例t1和t2，互相没有影响。
+
+（3）假设在多线程环境下，两个线程都可以访问Test t=new Test();
+此时假设thread1里调用t.methodB();同时thread2里调用t.methodB()
+这时假设thread1先抢到t对象的锁,那么thread2需要等待thread1释放t对象的锁才可以执行B方法。
+结果像这样：
+thread1获得t的锁->thread1执行methodB->thread1执行methodA->释放t的锁；
+thread2获得t的锁->thread2执行methodB->thread2执行methodA->释放t的锁。
+```
+
+
 
 
 
