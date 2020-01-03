@@ -1062,8 +1062,37 @@ volatile也是java中的一个关键字，加入volatile关键字时，编译后
 
 也就是说volatile能保证线程之间的可见性与原子性。值得注意的是它并不能保证复合操作的原子性。如自增自减操作。
 
+**使用场景1：volatile用做状态开关**
+
 ```java
-//典型的双重校验锁实例（DCL）用volatile修饰：
+volatile boolean shutdownRequested;
+...
+public void shutdown() { shutdownRequested = true; }
+
+public void doWork() { 
+    while (!shutdownRequested) { 
+        // do stuff
+    }
+}
+```
+
+**使用场景2：结合使用 volatile 和 synchronized 实现 “开销较低的读－写锁”**
+
+volatile 允许多个线程执行读操作，因此当使用 volatile 保证读代码路径时，要比使用锁执行全部代码路径获得更高的共享度 —— 就像读－写操作一样。
+
+```
+public class CheesyCounter {
+    private volatile int value;
+    public int getValue() { return value; }
+    public synchronized int increment() {
+        return value++;
+    }
+}
+```
+
+使用场景3：**再如双重校验锁实例（DCL）中实例用volatile修饰**
+
+```java
 public class SingleTon {
     private static volatile SingleTon instance = null;	//volatile来确保instance初始完成。
 
@@ -1092,15 +1121,25 @@ public class SingleTon {
 **/
 ```
 
+**正确使用 volatile 变量的条件**
+
+您只能在有限的一些情形下使用 volatile 变量替代锁。要使 volatile 变量提供理想的线程安全，必须同时满足下面两个条件：
+
+- 对变量的写操作不依赖于当前值。
+- 该变量没有包含在具有其他变量的不变式中。
+
 
 
 ### 1.16 Lock
 
 •	synchronized 和 lock 有什么区别？
 
-​	Lock是一个接口。Jdk1.5后出现的。我们了解到如果一个代码块被synchronized修饰了，当一个线程获取了对应的锁，并执行该代码块时，其他线程便只能一直等待，直到获取锁的线程释放锁，那么如果这个获取锁的线程由于要等待IO或者其他原因（比如调用sleep方法）被阻塞了，但是又没有释放锁，其它线程也只能继续等待，而什么也做不了。这样就很影响了程序的效率。而Lock就可以通过tryLock()方法做到让等待的线程只等待一定的时间，如果一定时间内没有获得锁就可以继续等或者可以做其他事情。Lock也可以通过lock.lockInterruptibly()方法直接中断线程的等待过程。
+​	Lock是一个接口。Jdk1.5后出现的。我们了解到如果一个代码块被synchronized修饰了，当一个线程获取了对应的锁，并执行该代码块时，其他线程便只能一直等待，直到获取锁的线程释放锁，那么如果这个获取锁的线程由于要等待IO或者其他原因（比如调用sleep方法）被阻塞了，但是又没有释放锁，其它线程也只能继续等待，而什么也做不了。这样就很影响了程序的效率。
 
-​	还有一种情况是，当有多个线程读写文件时，读操作和写操作会发生冲突现象，写操作和写操作会发生冲突现象，但是读操作和读操作不会发生冲突现象。但是采用synchronized关键字来实现同步的话，就会导致一个问题：如果多个线程都只是进行读操作，当一个线程在进行读操作时，其他线程也只能等待无法进行读操作。而Lock能够做到多个线程都进行读操作而不会发生冲突。
+- Lock就可以通过tryLock()方法尝试获得锁，如果一定时间内没有获得锁就可以继续等或者可以做其他事情。Lock也可以通过lock.lockInterruptibly()方法直接中断线程的等待过程。
+
+- 还有一种情况是，当有多个线程读写文件时，读操作和写操作会发生冲突现象，写操作和写操作会发生冲突现象，但是读操作和读操作不会发生冲突现象。但是采用synchronized关键字来实现同步的话，就会导致一个问题：如果多个线程都只是进行读操作，当一个线程在进行读操作时，其他线程也只能等待无法进行读操作。而Lock能够做到多个线程都进行读操作而不会发生冲突。
+
 
 ​	另外，通过Lock可以通过tryLock()方法知道线程有没有成功获取到锁。这个是synchronized无法办到的。
 
@@ -1115,9 +1154,43 @@ synchronized和Lock区别：
 由于ReentrantLock是可重入锁，所以可以反复得到相同的一把锁，它有一个与锁相关的获取计数器，如果拥有锁的某个线程再次得到锁，那么获取计数器就加1，然后锁需要被释放两次才能获得真正释放(重入锁)。
 ```
 
+Lock的经典用法：
+
+```java
+    public void doSomething(Thread thread)  {
+        if (lock.tryLock()) {	//尝试获取锁
+            try {
+            	lock.lock();
+                System.out.println(thread.getName() + "得到了锁.");
+                 Thread.sleep(5000);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                System.out.println(thread.getName() + "释放了锁.");
+                lock.unlock();
+            }
+         } else {
+            System.out.println(thread.getName() + "获取锁失败.");
+         }
+    }
+```
+
+假如线程A和线程B使用同一个锁LOCK，此时线程A首先获取到锁LOCK.lock()，并且始终持有不释放。如果此时B要去获取锁，有四种方式：
+
+LOCK.lock(): 此方式会始终处于等待中，即使调用B.interrupt()也不能中断，除非线程A调用LOCK.unlock()释放锁。
+
+LOCK.lockInterruptibly(): 此方式会等待，但当调用B.interrupt()会被中断等待，并抛出InterruptedException异常，否则会与lock()一样始终处于等待中，直到线程A释放锁。
+
+LOCK.tryLock(): 该处不会等待，获取不到锁并直接返回false，去执行下面的逻辑。
+
+LOCK.tryLock(10, TimeUnit.SECONDS)：该处会在10秒时间内处于等待中，但当调用B.interrupt()会被中断等待，并抛出InterruptedException。10秒时间内如果线程A释放锁，会获取到锁并返回true，否则10秒过后会获取不到锁并返回false，去执行下面的逻辑。
+
+
 Lock原理参考
 
 解决多线程安全问题-无非两个方法synchronized和lock 具体原理以及如何 获取锁AQS算法 (百度-美团) - aspirant - 博客园 https://www.cnblogs.com/aspirant/p/8657681.html
+
+
 
 
 
