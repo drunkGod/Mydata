@@ -208,7 +208,7 @@ private static void change(Object o) {
   }
 ```
 
-**HashMap#put()源码：**
+#### **HashMap#put()源码：**
 
 ```java
 //1.根据key计算它的hash值，用于得到一个在数组的索引。
@@ -249,6 +249,8 @@ LinkedHashMap有两个Entry<K, V>对象head，tail，然后每个Entry又有Entr
 ```
 Comparable可以看做是内部比较器，Comparator可以看做是外部比较器。对于实现了Comparable的类，直接用Arrays.sort()方法可以实现排序，如果没有实现Comparable接口，也可以用自己的比较器来实现:Arrays.sort(users, new MyComparator());同时存在时，自定义的Comparator的排序优先级高。
 ```
+
+
 
 ### 1.5 ConcurrentHashMap
 
@@ -716,10 +718,10 @@ public class MyAspect {
 
 阻塞： 等待用户输入 | sleep() | join()
 
-消亡： 异常|run() | main() 方法运行结束。
+消亡： 程序异常 | run() | main() 方法运行结束。
 
 ```
-Runnable()和Callable接口区别：Callable的run()有返回值，并可以抛出异常。
+Runnable()和Callable接口区别：Callable的call()有返回值，并可以抛出异常。
 Callable的返回值是一个FutureTask对象，有isDone()/cancel()/get()/get(time, unit)等实用的方法。
 ```
 
@@ -735,7 +737,7 @@ public class ThreadTest {
         Thread th2 = new Thread(new MyThreadTwo());
         th2.start();
         //方式3：实现Callbble接口实现多线程
-        //3.1 使用FutureTask类作为中间类连接Callable与Thread
+        //3.1 使用FutureTask类作为中间类连接Callable与Thread。Callable也可以用线程池.submit获取。
         FutureTask<String> result = new FutureTask<String>(new MyThreadThree());
         Thread th3 = new Thread(result);
         th3.start();
@@ -783,12 +785,54 @@ class MyThreadThree implements Callable {
 
 
 
+**停止线程的方法：**
+
+　　1、使用stop()方法等，不过已经不再被推荐使用，和suspend、resume一样。
+
+　　2、使用退出标志终止线程，引入一个共享变量，volatile类型或者使用synchronized来监视共享变量相关操作的方法，然后在run()方法中，通过while循环不停的轮询这个标志。
+
+　　3、使用Interrupt方法中断线程。
+
+　　注意点：我一开始看到该方法的时候，认为interrupt会使线程停止运行，但事实上并非如此，调用一个线程的Interrupt方法会把线程的状态改为中断态。这其中又可以细分成两个方面：
+
+　　1）对于因执行了sleep、wait、join方法而休眠的线程：调用Interrupt方法会使他们不再休眠，同时会抛出 InterruptedException异常。比如一个线程A正在sleep中，这时候另外一个程序里去调用A的interrupt方法，这时就会迫使A停止休眠而抛出InterruptedException异常，从而提前使线程逃离阻塞状态。
+
+　　2）对于正在运行的线程，即没有阻塞的线程，调用Interrupt方法就只是把线程A的状态改为interruptted，但是不会影响线程A的继续执行。
+
+```java
+//方法2：
+Thread t1 = new Thread(() -> {
+	while (!Thread.currentThread().isInterrupted()) {
+		System.out.println("hello,world");
+	}
+});
+t1.start();
+TimeUnit.MILLISECONDS.sleep(50);
+t1.interrupt();
+
+//方法3：
+Thread t1 = new Thread(() -> {
+  try {
+   System.out.println("线程初始中断状态 -> " + Thread.currentThread().isInterrupted());
+		Thread.sleep(10000);
+	} catch (InterruptedException e) {
+   System.out.println("抛出异常后线程中断状态 -> " + Thread.currentThread().isInterrupted());
+		e.printStackTrace();
+	}
+});
+t1.start();
+TimeUnit.MILLISECONDS.sleep(50);
+t1.interrupt();
+```
+
+
+
 
 ### 1.13 Java内存模型
 
 • 内存模型以及分区，需要详细到每个区放什么。
 
-**JMM概念**
+#### **1.13.1 JMM**
 
 ​    Java内存模型（JMM）就是一组规则，它规定了多个线程之间的通信方式与通信细节。
 
@@ -951,6 +995,117 @@ static + synchronized + wait() + notify()实现三个线程轮流执行：
 
 
 
+#### **1.13.2 ThreadLocal**
+
+- static能不能修饰threadLocal，为什么，这道题我当时一听到其实挺懵逼的
+
+**ThreadLocal概念**
+
+ThreadLocal，即线程本地变量。ThreadLocal类的目的是为每个线程单独维护一个变量的值，避免线程间对同一变量的竞争访问，适用于一个变量在每个线程中需要有自己独立的值的场合。例如以下代码，当多线程同时访问类A的setID和getID方法时，每个线程的getID方法会返回自己setID()时设置的值。
+
+```java
+public class ThreadLocalTest {
+
+    static ThreadLocal<String> localVar = new ThreadLocal<>();
+
+    static void print(String str) {
+        //打印当前线程中本地内存中本地变量的值
+        System.out.println(str + " :" + localVar.get());
+        //清除本地内存中的本地变量
+        localVar.remove();
+    }
+
+    public static void main(String[] args) {
+        Thread t1  = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                //设置线程1中本地变量的值
+                localVar.set("localVar1");
+                //调用打印方法
+                print("thread1");
+                //打印本地变量
+                System.out.println("after remove : " + localVar.get());
+            }
+        });
+
+        Thread t2  = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                //设置线程1中本地变量的值
+                localVar.set("localVar2");
+                //调用打印方法
+                print("thread2");
+                //打印本地变量
+                System.out.println("after remove : " + localVar.get());
+            }
+        });
+
+        t1.start();
+        t2.start();
+    }
+}
+```
+
+**ThreadLocal对象设为static：**
+
+​        Java 中每个线程中都有一个ThreadLocalMap类型的成员变量，该变量是一个Hash表， 所以每个线程都单独维护这样一个Hash表。当ThreadLocal对象调用set方法时，就是把ThreadLocal对象自己当做key，set的值当作value来存进这个ThreadLocalMap。所以在线程1中set的值，对线程2来说是摸不到的，而且在线程2中重新set的话，也不会影响到线程1中的值，保证了线程之间不会相互干扰。（ThreadLocalMap是类HashMap结构）
+
+​        所以不同线程之间执行set()方法的时候，key是不是同一个对象都没关系，所以一般都是把ThreadLocal对象声明为静态的，因为如果把ThreadLocal对象声明为非静态，则在类的每个实例中都会产生一个新对象，这是毫无意义的，只是增加了内存消耗。
+
+```java
+public void set(T value) {
+	Thread t = Thread.currentThread();
+	ThreadLocalMap map = getMap(t);
+	if (map != null)
+		map.set(this, value);	//ThreadLocalMap没有链表，冲突时存到下一位，冲突时效率低。
+	else
+		createMap(t, value);
+}
+
+public T get() {
+	Thread t = Thread.currentThread();
+	ThreadLocalMap map = getMap(t);
+	if (map != null) {
+		ThreadLocalMap.Entry e = map.getEntry(this);
+		if (e != null) {
+			@SuppressWarnings("unchecked")
+			T result = (T)e.value;
+			return result;
+		}
+	}
+	return setInitialValue();
+}
+```
+
+**ThreadLocal内存泄露：**
+
+```java
+static class Entry extends WeakReference<ThreadLocal<?>> {
+    Object value;
+    Entry(ThreadLocal<?> k, Object v) {
+        super(k);
+        value = v;
+    }
+}
+```
+
+​      当使用ThreadLocal保存一个value时，会在ThreadLocalMap中的数组插入一个Entry对象，按理说key-value都应该以强引用保存在Entry对象中，但在ThreadLocalMap的实现中，key被保存到了WeakReference对象中。
+
+**ThreadLocalMap用弱引用：**
+
+​      每个key都弱引用指向threadlocal。所以当把threadlocal实例置为null后，没有任何强引用指向threadlocal实例，所以threadlocal就可以顺利被gc回收。注意！假如每个key都强引用指向threadlocal，那么这个threadlocal就会因为和entry存在强引用无法被回收！造成内存泄漏 ，除非线程结束，线程被回收了，map才跟着回收。
+
+**ThreadLocal内存泄漏问题：**
+
+​      当把threadlocal实例置为null以后，map里面的value也没有被回收，且这块value永远不会被访问到了。也会造成内存泄露。在调用ThreadLocal的get()、set()可能会清除ThreadLocalMap中key为null的Entry对象，这样对应的value就没有GC Roots可达了，下次GC的时候就可以被回收，当然如果调用remove方法，肯定会删除对应的Entry对象。如果使用ThreadLocal的set方法之后，没有显示的调用remove方法，就有可能发生内存泄露，所以养成良好的编程习惯十分重要，**使用完ThreadLocal之后，记得调用remove方法**。
+
+```
+- 其实只要这个线程对象及时被gc回收，这个内存泄露问题影响不大，但在threadLocal设为null到线程结束中间这段时间不会被回收的，就发生了我们认为的内存泄露。
+- 最要命的是线程对象不被回收的情况，这就发生了真正意义上的内存泄露。比如使用线程池的时候，线程结束是不会销毁的，会再次使用的。就可能出现内存泄露。
+```
+
+
+
 ### 1.14 synchronized 
 
 •	synchronized 的实现原理以及锁优化？
@@ -1005,8 +1160,6 @@ public synchronized void method() {
 
 两种同步方式本质上没有区别，只是方法的同步是一种隐式的方式来实现，无需通过字节码来完成。两个指令的执行是JVM通过调用操作系统的互斥原语mutex来实现，被阻塞的线程会被挂起、等待重新调度，会导致“用户态和内核态”两个态之间来回切换，对性能有较大影响。
 
-
-
 ```java
 对于synchronized要明白两个问题，①锁的对象是谁；②谁持有了锁。只有竞争相同的锁对象时才会进行排队，否则不影响。
 
@@ -1044,7 +1197,14 @@ thread1获得t的锁->thread1执行methodB->thread1执行methodA->释放t的锁�
 thread2获得t的锁->thread2执行methodB->thread2执行methodA->释放t的锁。
 ```
 
+**在用synchronized修饰方法时要注意以下几点：** 
 
+- synchronized关键字不能继承。
+
+​	在父类中的某个方法使用了synchronized关键字，而在子类中覆盖了这个方法，在子类中的这个方法默认情况下并不是同步的，而必须显式地在子类的这个方法中加上synchronized关键字才可以。或者可以在子类方法中调用父类中相应的方法。
+
+- 在定义接口方法时不能使用synchronized关键字。
+- 构造方法不能使用synchronized关键字
 
 
 
@@ -1128,6 +1288,10 @@ public class SingleTon {
 - 对变量的写操作不依赖于当前值。
 - 该变量没有包含在具有其他变量的不变式中。
 
+```
+注意，static线程非安全。如 static a, run()中a=3;sout(a);a=5;sout(2*a)；则多线程中可能出现=6的情况。
+```
+
 
 
 ### 1.16 Lock
@@ -1140,11 +1304,136 @@ public class SingleTon {
 
 - 还有一种情况是，当有多个线程读写文件时，读操作和写操作会发生冲突现象，写操作和写操作会发生冲突现象，但是读操作和读操作不会发生冲突现象。但是采用synchronized关键字来实现同步的话，就会导致一个问题：如果多个线程都只是进行读操作，当一个线程在进行读操作时，其他线程也只能等待无法进行读操作。而Lock能够做到多个线程都进行读操作而不会发生冲突。
 
+- 通过Lock可以通过tryLock()方法知道线程有没有成功获取到锁。
 
-​	另外，通过Lock可以通过tryLock()方法知道线程有没有成功获取到锁。这个是synchronized无法办到的。
+​    上面提到的三种情形，我们都可以通过Lock来解决，但 synchronized 关键字却无能为力。也就是说，Lock提供了比synchronized更多的功能。
 
+
+
+Lock接口有6个方法：
+
+```java
+// 获取锁  
+void lock()   
+  
+// 仅在调用时锁为空闲状态才获取该锁，可以响应中断  
+boolean tryLock()   
+
+// 如果锁在给定的等待时间内空闲，并且当前线程未被中断，则获取锁  
+boolean tryLock(long time, TimeUnit unit)   
+    
+//如果线程正在等待获取锁，则该方法可以中断线程的等待状态。 如果已经获取了锁，则不会被中断。 
+void lockInterruptibly()   
+    
+// 释放锁  
+void unlock()  
+
+// 返回绑定到此 Lock 实例的新 Condition 实例  
+Condition newCondition() 
 ```
-synchronized和Lock区别：
+
+
+
+**Lock API的重要接口和类：**
+
+- **锁(Lock)**：这是Lock API的基本接口。它提供了 synchronized 关键字的所有功能，以及为锁定创建不同条件的其他方法，为线程等待锁定提供超时功能。一些重要的方法是 lock() 获取锁，unlock() 释放锁，tryLock() 等待锁定一段时间，newCondition() 创建条件等。
+- **条件(Condition)**：条件对象类似于对象等待通知( Object wait-notify)模型，具有创建不同等待集的附加功能。Condition 对象始终由 Lock 对象创建。一些重要的方法是 await()，类似于Object.wait() 和 signal()，signalAll()，类似于 Object.notify() 和 Object.notifyAll() 方法。
+- **读写锁(ReadWriteLock)**：它包含一对关联的锁，一个用于只读操作，另一个用于写入。只要没有写入线程，读锁可以由多个读取线程同时保持。写锁是独占的。
+- **重入锁(ReentrantLock)**：这是最广泛使用的 Lock 接口实现类。此类以与 synchronized 关键字类似的方式实现 Lock 接口。除了 Lock 接口实现之外，ReentrantLock 还包含一些实用程序方法来获取持有锁的线程，等待获取锁线程等。
+
+
+
+**Lock的经典用法：**
+
+```java
+Lock lock = new ReentrantLock();
+public void lock(String name) {
+	// 获取锁
+	lock.lock();
+	try {
+		System.out.println(name + " get the lock");
+		Thread.sleep(3000);
+	} catch (InterruptedException e) {
+		e.printStackTrace();
+	} finally {
+		// 释放锁
+		lock.unlock();
+		System.out.println(name + " release the lock");
+	}
+}
+
+public static void main(String[] args) throws Exception {
+	ThreadTest lt = new ThreadTest();
+	new Thread(() -> lt.lock("A")).start();
+	new Thread(() -> lt.lock("B")).start();
+}
+/**结果：
+A get the lock
+A release the lock
+B get the lock
+B release the lock
+```
+
+```java
+public void test() {
+	Lock lock = new ReentrantLock();
+	Thread t1 = new Thread(new Runnable() {
+		@Override
+		public void run() {
+			lock.lock();
+			try {
+				System.out.println("t1获得锁");
+				System.out.println("t1 goon ...");
+				Thread.sleep(10000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			} finally {
+				System.out.println("t1释放锁");
+				lock.unlock();
+			}
+		}
+	});
+
+	Thread t2 = new Thread(new Runnable() {
+		@Override
+		public void run() {
+			try {
+				lock.lockInterruptibly();
+				System.out.println("t2 lockInterruptibly 获得锁...");
+				Thread.sleep(2000);
+				lock.unlock();
+			} catch (InterruptedException e1) {
+			System.out.println("t2 lockInterruptibly未获得锁，进入InterruptedException..");
+			}
+			System.out.println("t2 end");
+		}
+	});
+
+	t1.start();
+	t2.start();
+
+	try {
+		Thread.sleep(3000);
+	} catch (InterruptedException e) {
+		e.printStackTrace();
+	}
+	System.out.println("t2 尝试通过lockInterruptibly 获得锁");
+	t2.interrupt();
+}
+
+/**结果：
+t1获得锁
+t1 goon ...
+t2 尝试通过lockInterruptibly 获得锁
+t2 lockInterruptibly未获得锁，进入InterruptedException..
+t2 end
+t1释放锁
+```
+
+
+
+**synchronized和Lock区别：**
+
 1. synchronized是java的关键字，而ReentrantLock是一个类。都能通过锁来控制同步。Synchronized的锁更重量级一些，Lock类的锁更轻量级。
 2. 然后synchronized会自动释放锁，Lock需要主动调用unlock()方法释放锁。特别是异常时，如果没有主动unlock()释放锁，很可能造成死锁，所以unlock一般都是放在finally块中执行。
 3. 然后synchronized没有获得锁时会一直等待，不能中断，相当于是阻塞式的。Lock可以让等待锁的线程主动中断。
@@ -1152,45 +1441,11 @@ synchronized和Lock区别：
 5. 还有Lock可以提高多个线程进行读操作的效率。如实现一个读写锁ReadWriteLock。 
 
 由于ReentrantLock是可重入锁，所以可以反复得到相同的一把锁，它有一个与锁相关的获取计数器，如果拥有锁的某个线程再次得到锁，那么获取计数器就加1，然后锁需要被释放两次才能获得真正释放(重入锁)。
-```
-
-Lock的经典用法：
-
-```java
-    public void doSomething(Thread thread)  {
-        if (lock.tryLock()) {	//尝试获取锁
-            try {
-            	lock.lock();
-                System.out.println(thread.getName() + "得到了锁.");
-                 Thread.sleep(5000);
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                System.out.println(thread.getName() + "释放了锁.");
-                lock.unlock();
-            }
-         } else {
-            System.out.println(thread.getName() + "获取锁失败.");
-         }
-    }
-```
-
-假如线程A和线程B使用同一个锁LOCK，此时线程A首先获取到锁LOCK.lock()，并且始终持有不释放。如果此时B要去获取锁，有四种方式：
-
-LOCK.lock(): 此方式会始终处于等待中，即使调用B.interrupt()也不能中断，除非线程A调用LOCK.unlock()释放锁。
-
-LOCK.lockInterruptibly(): 此方式会等待，但当调用B.interrupt()会被中断等待，并抛出InterruptedException异常，否则会与lock()一样始终处于等待中，直到线程A释放锁。
-
-LOCK.tryLock(): 该处不会等待，获取不到锁并直接返回false，去执行下面的逻辑。
-
-LOCK.tryLock(10, TimeUnit.SECONDS)：该处会在10秒时间内处于等待中，但当调用B.interrupt()会被中断等待，并抛出InterruptedException。10秒时间内如果线程A释放锁，会获取到锁并返回true，否则10秒过后会获取不到锁并返回false，去执行下面的逻辑。
 
 
 Lock原理参考
 
 解决多线程安全问题-无非两个方法synchronized和lock 具体原理以及如何 获取锁AQS算法 (百度-美团) - aspirant - 博客园 https://www.cnblogs.com/aspirant/p/8657681.html
-
-
 
 
 
@@ -1200,7 +1455,7 @@ Lock原理参考
 
 #### 1.17.1 线程池概念
 
-​	在没用线程池之前，我们是需要使用线程就去创建一个，实现起来也很简单，但是问题如果并发的线程数量很多，而且每个线程执行的时间又比较短的话，系统就会很频繁地创建，切换和销毁线程，这都是很耗时间的，会降低系统的效率。线程池的主要目的是为了达到一个资源复用的效果。
+​	在没用线程池之前，我们是需要使用线程就去创建一个，实现起来也很简单，但是这种方式不好对线程进行管理。一是线程的数量不好控制，线程太多，线程切换带来的开销将不可忽视，线程太少，多核CPU得不到充分利用，是一种浪费。并且频繁创建和销毁线程会占用更多的CPU和内存，达不到重复利用资源的效果。线程池的主要目的是为了达到一个资源复用的效果。
 
 ```
 使用Java线程池的好处：
@@ -1209,7 +1464,50 @@ Lock原理参考
 3. 提供定时执行、定期执行、单线程、并发数控制等功能。
 ```
 
-#### 1.17.2 线程池类型
+**线程池处理流程：**
+
+<img src="https://upload-images.jianshu.io/upload_images/845143-19328763889448ab.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp" alt="img" style="zoom:60%;" />
+
+线程池的主要处理流程。任务提交之后执行过程大致如下：
+
+1. 判断核心线程池是否已满，如果不是，则创建线程执行任务
+2. 如果核心线程池满了，判断队列是否满了，如果队列没满，将任务放在队列中
+3. 如果队列满了，则判断线程池是否已满，如果没满，创建线程执行任务
+4. 如果线程池也满了，则按照拒绝策略对任务进行处理
+
+**线程池重要参数：**
+
+`1.corePoolSize`：
+线程池的基本大小，即在没有任务需要执行的时候线程池的大小，并且只有在工作队列满了的情况下才会创建超出这个数量的线程。这里需要注意的是：在刚刚创建ThreadPoolExecutor的时候，线程并不会立即启动，而是要等到有任务提交时才会启动，除非调用了prestartCoreThread/prestartAllCoreThreads事先启动核心线程。再考虑到keepAliveTime和allowCoreThreadTimeOut超时参数的影响，所以没有任务需要执行的时候，线程池的大小不一定是corePoolSize。
+
+`2.maximumPoolSize`：
+线程池中允许的最大线程数，线程池中的当前线程数目不会超过该值。如果队列中任务已满，并且当前线程个数小于maximumPoolSize，那么会创建新的线程来执行任务。这里值得一提的是largestPoolSize，该变量记录了线程池在整个生命周期中曾经出现的最大线程个数。为什么说是曾经呢？因为线程池创建之后，可以调用setMaximumPoolSize()改变运行的最大线程的数目。
+
+```
+另外有一个poolSize，指线程池中当前线程的数量，当该值为0的时候，意味着没有任何线程，线程池会终止；同一时刻，poolSize不会超过maximumPoolSize。
+```
+
+`3.keepAliveTime`：
+
+空闲时间，当线程池数量超过核心线程数时，多余的空闲线程存活的时间，即：这些线程多久被销毁。
+
+`4.unit`：
+
+空闲时间的单位，可以是毫秒、秒、分钟、小时和天，等等。
+
+`5.WorkQueue`：
+等待队列，线程池中的线程数超过核心线程数时，任务将放在等待队列，它是一个BlockingQueue类型的对象。jdk内部自带一些阻塞队列。1）ArrayBlockingQueue，队列是有界的，基于数组实现的阻塞队列；2）LinkedBlockingQueue，队列可以有界，也可以无界。基于链表实现的阻塞队列；3）SynchronousQueue，不存储元素的阻塞队列，每个插入操作必须等到另一个线程调用移除操作，否则插入操作将一直处于阻塞状态。该队列也是Executors.newCachedThreadPool()的默认队列；4）PriorityBlockingQueue，带优先级的无界阻塞队列。
+
+`6.threadFactory`：
+
+线程工厂，我们可以使用它来创建一个线程
+
+`7.handler`：
+拒绝策略，当线程池和等待队列都满了之后，需要通过该对象的回调函数进行回调处理。jdk自带4种拒绝策略，1）CallerRunsPolicy：在调用者线程执行；2）AbortPolicy：直接抛出RejectedExecutionException异常；3）DiscardPolicy：任务直接丢弃，不做任何处理；4）DiscardOldestPolicy：丢弃队列里最旧的那个任务，再尝试执行当前任务。这四种策略各有优劣，比较常用的是DiscardPolicy，但是这种策略有一个弊端就是任务执行的轨迹不会被记录下来。我们可以通过实现RejectedExecutionHandler接口的方式实现自定义的拒绝策略。
+
+
+
+#### 1.17.3 线程池类型
 
 Java中常用的线程池有四种：
 
@@ -1219,25 +1517,15 @@ newFixedThreadPool，newSingleThreadPool，newCachedThreadPool，ScheduledThread
 
 **newFixedThreadPool**
 
-概念：创建一个指定工作线程数量的线程池，这样就能控制最大并发数。然后池中的线程数小于核心线程数时，每提交一个任务，线程池就会创建一个工作线程去执行这个任务。然后如果池中的线程数超过核心线程数了，那么这些新提交的任务就会被放到池队列中。然后如果你还要继续提交任务，把池队列也给放满了，就是把池队列的21亿个位置都放满了。那么这时候就判断，如果池中的线程数量小于线程池的最大线程数量，线程池的最大线程数也是21亿，那就继续创建线程去执行。如果池中的线程数量等于线程池的最大线程数量了，就会抛出异常，拒绝任务，至于如何拒绝处理新增的任务，取决于线程池的饱和策略RejectedExecutionHandler了。
+概念：创建一个指定核心线程数量的线程池，这样就能控制最大并发数。然后池中的线程数小于核心线程数时，每提交一个任务，线程池就会创建一个工作线程去执行这个任务。然后如果池中的线程数超过核心线程数了，那么这些新提交的任务就会被放到池队列中。然后如果你还要继续提交任务，把池队列也给放满了（21E+），那么这时候就判断，如果池中的线程数量小于线程池的最大线程数量（21E+），那就继续创建线程去执行。如果池中的线程数量大于线程池的最大线程数量了，就会抛出异常，拒绝任务，至于如何拒绝处理新增的任务，取决于线程池的饱和策略RejectedExecutionHandler了。
 
 适用：对于需要保证所有提交的任务都要被执行的情况，它的性能好很多
 
 ```
-corePoolSize：
-线程池的基本大小，即在没有任务需要执行的时候线程池的大小，并且只有在工作队列满了的情况下才会创建超出这个数量的线程。这里需要注意的是：在刚刚创建ThreadPoolExecutor的时候，线程并不会立即启动，而是要等到有任务提交时才会启动，除非调用了prestartCoreThread/prestartAllCoreThreads事先启动核心线程。再考虑到keepAliveTime和allowCoreThreadTimeOut超时参数的影响，所以没有任务需要执行的时候，线程池的大小不一定是corePoolSize。
-
-maximumPoolSize：
-线程池中允许的最大线程数，线程池中的当前线程数目不会超过该值。如果队列中任务已满，并且当前线程个数小于maximumPoolSize，那么会创建新的线程来执行任务。这里值得一提的是largestPoolSize，该变量记录了线程池在整个生命周期中曾经出现的最大线程个数。为什么说是曾经呢？因为线程池创建之后，可以调用setMaximumPoolSize()改变运行的最大线程的数目。
-
-poolSize：
-线程池中当前线程的数量，当该值为0的时候，意味着没有任何线程，线程池会终止；同一时刻，poolSize不会超过maximumPoolSize。
-```
-
 线程池数量经验：
-
-- IO密集型 = 2Ncpu（常出现于线程中：数据库数据交互、文件上传下载、网络数据传输等等）
 - 计算密集型 = Ncpu、或(N+1)cpu（常出现于线程中：复杂算法）
+- IO密集型 = 2Ncpu（常出现于线程中：数据库数据交互、文件上传下载、网络数据传输等等）
+```
 
 
 
@@ -1247,11 +1535,7 @@ poolSize：
 
 适用：一个任务一个任务执行的场景
 
-**ScheduledThreadPool**
 
-概念：创建一个线程池，它可安排在给定延迟后运行命令或者定期地执行。池中保存的线程数，即使线程是空闲的也包括在内。
-
-适用：周期性执行任务的场景
 
 **newCachedThreadPool**
 
@@ -1260,6 +1544,12 @@ poolSize：
 适用：适合执行大量短暂异步的程序，或者希望提交的任务尽快分配线程执行的情况。
 
 
+
+**ScheduledThreadPool**
+
+概念：创建一个线程池，它可安排在给定延迟后运行命令或者定期地执行。池中保存的线程数，即使线程是空闲的也包括在内。
+
+适用：周期性执行任务的场景
 
 
 
@@ -1328,33 +1618,6 @@ count.countDown();
 • Java 的信号灯？
 
 Semaphore翻译成字面意思为 信号量，Semaphore可以控制并行执行的线程个数，就是可以在Semaphore实例化的时候就指定线程的最大并行数。然后每个线程可以通过 acquire() 方法获取一个许可，如果没有获得线程就会等待，获得许可的线程执行完之后，使用release() 释放一个许可。然后处于等待状态的线程就可以继续拿到这个许可了。
-
-
-#### 1.18.5 ThreadLocal
-
-- static能不能修饰threadLocal，为什么，这道题我当时一听到其实挺懵逼的
-
-ThreadLocal概念
-
-ThreadLocal类的目的是为每个线程单独维护一个变量的值，避免线程间对同一变量的竞争访问，适用于一个变量在每个线程中需要有自己独立的值的场合。例如以下代码，当多线程同时访问类A的setID和getID方法时，每个线程的getID方法会返回自己setID()时设置的值。
-
-```java
-public class A {
-  private static ThreadLocal threadLocalID = new ThreadLocal();
-  int setID(int id) {
-      threadLocalID.set(id);
-  }
-  int getID() {
-      return threadLocalID.get();
-  }
-}
-```
-
-那么ThreadLocal类型的成员变量threadLocalID为什么设置为static的呢？
-
-Java 中每个线程都有与之关联的Thread对象，Thread对象中有一个ThreadLocal.ThreadLocalMap类型的成员变量，该变量是一个Hash表， 所以每个线程都单独维护这样一个Hash表，当ThreadLocal类型对象调用set方法时，即上面的threadLocalID.set(id)，这个set方法会使用当前线程维护的Hash表，把自己作为key, id作为value插入到Hash表中。由于每个线程维护的Hash表是独立的，因此在不同的Hash表中，key值即使相同也是没问题的。
-
-如果把threadLocalID声明为非静态，则在类A的每个实例中都会产生一个新对象，这是毫无意义的，只是增加了内存消耗。
 
 
 
