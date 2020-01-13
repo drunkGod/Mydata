@@ -698,7 +698,7 @@ public class MyAspect {
 
 ​        相对进程而言，线程是一个更加接近于执行体的概念，它可以与同进程中的其他线程共享数据，但拥有自己的栈空间，拥有独立的执行序列。
 
-**多线程使用场景**
+**多线程使用场景：**
 
 - 耗时的计算；
 
@@ -706,7 +706,7 @@ public class MyAspect {
 
 - 需要异步解耦。
 
-**多线程状态/生命周期**
+**多线程生命周期：**
 
 线程有创建，可运行，运行中，阻塞，消亡五种状态。
 
@@ -724,6 +724,8 @@ public class MyAspect {
 Runnable()和Callable接口区别：Callable的call()有返回值，并可以抛出异常。
 Callable的返回值是一个FutureTask对象，有isDone()/cancel()/get()/get(time, unit)等实用的方法。
 ```
+
+**多线程使用实例：**
 
 ```java
 public class ThreadTest {
@@ -783,9 +785,25 @@ class MyThreadThree implements Callable {
 }
 ```
 
+**多线程相关方法：**
 
+`start()`：启动线程，即开始执行run()方法中的内容
 
-**停止线程的方法：**
+`join()/join(long mills)`：阻塞等待线程结束
+
+`yield()`：让出一次CPU时间
+
+`getState()`：获取线程状态
+
+`setPriority()/getPriority()`：设置/获取优先级
+
+`interrupt()/isInterrupt()`：打断/是否打断
+
+`setName()/getName()`：设置/获取线程名
+
+`setDaemon()/isDaemon()`：设置/获取是否守护线程。（守护线程则是随着JVM消失而死亡，默认用户线程则继续执行）
+
+**多线程停止的方法：**
 
 　　1、使用stop()方法等，不过已经不再被推荐使用，和suspend、resume一样。
 
@@ -874,12 +892,12 @@ t1.interrupt();
   如果两个操作之间的关系不在以上，且无法从上列关系推导出来的话，他们就没有顺序性保障，虚拟机可以对它们随意地进行重排序。其中时间先后顺序与先行发生原则之间基本没有太大的关系，所以在衡量并发安全问题的时候不能受时间顺序的干扰，一切必须以先行发生原则为准。
 
 
-**注：join()/yield()可以实现一定的执行顺序，而static + synchronized + wait() + notify()可实现线程任意顺序**
+**注：join()/yield()可以实现一定的执行顺序，而static + volatile+ synchronized + wait() + notify()可实现线程任意顺序**
 
 ```java
 //一般说的synchronized用来做多线程同步功能，其实synchronized只是提供多线程互斥，而对象的wait()和notify()方法才提供了线程的同步功能。Jdk1.8 HotSpot把notify()实现为公平的方式（先睡者先唤醒）而非随机。
 public class ThreadTest {
-    private static int ThreadOrder = 0;    //控制执行顺序，防止start()因重排序而乱序
+    private static volatile int ThreadOrder = 0;    //控制执行顺序，防止start()因重排序而乱序
     private static final Object lock = new Object();	//锁对象
  	
     //private byte[] o = new byte[0]; //一种性能更好的锁写法。说明：零长度的byte数组对象创建起来将比任何对象都经济――查看编译后的字节码：生成零长度的byte[]对象只需3条操作码，而Object lock = new Object()则需要7行操作码。
@@ -1201,10 +1219,15 @@ thread2获得t的锁->thread2执行methodB->thread2执行methodA->释放t的锁�
 
 - synchronized关键字不能继承。
 
-​	在父类中的某个方法使用了synchronized关键字，而在子类中覆盖了这个方法，在子类中的这个方法默认情况下并不是同步的，而必须显式地在子类的这个方法中加上synchronized关键字才可以。或者可以在子类方法中调用父类中相应的方法。
+  ​在父类中的某个方法使用了synchronized关键字，而在子类中覆盖了这个方法，在子类中的这个方法默认情况下并不是同步的，而必须显式地在子类的这个方法中加上synchronized关键字才可以。或者可以在子类方法中调用父类中相应的方法。
 
 - 在定义接口方法时不能使用synchronized关键字。
+
 - 构造方法不能使用synchronized关键字
+
+
+**可重入锁/偏向锁/偏移锁：**
+
 
 
 
@@ -1505,19 +1528,37 @@ Lock原理参考
 `7.handler`：
 拒绝策略，当线程池和等待队列都满了之后，需要通过该对象的回调函数进行回调处理。jdk自带4种拒绝策略，1）CallerRunsPolicy：在调用者线程执行；2）AbortPolicy：直接抛出RejectedExecutionException异常；3）DiscardPolicy：任务直接丢弃，不做任何处理；4）DiscardOldestPolicy：丢弃队列里最旧的那个任务，再尝试执行当前任务。这四种策略各有优劣，比较常用的是DiscardPolicy，但是这种策略有一个弊端就是任务执行的轨迹不会被记录下来。我们可以通过实现RejectedExecutionHandler接口的方式实现自定义的拒绝策略。
 
+**线程池重要方法：**
+
+`execute()`：执行线程，无返回值
+
+`submit()`：执行线程，有返回值
+
+`shutdown()`：关闭线程池，此时线程会继续执行
+
+`shutdownNow()`：关闭线程池，此时线程立即停止
+
+`isShutdown()`：是否关闭
+
+`isTerminated()`：是否消亡
+
+`awaitTermination(long time, TimeUnit unit)`：等待终止，终止则返回true
+
+`invokeAll()/invokeAny()`：唤醒所有/某个线程
+
 
 
 #### 1.17.3 线程池类型
 
-Java中常用的线程池有四种：
+Java中常用的线程池有五种：
 
-newFixedThreadPool，newSingleThreadPool，newCachedThreadPool，ScheduledThreadPool
+newFixedThreadPool，newSingleThreadPool，newCachedThreadPool，ScheduledThreadPool，workThreadPool
 
 每种线程池有不同的适用场景：
 
 **newFixedThreadPool**
 
-概念：创建一个指定核心线程数量的线程池，这样就能控制最大并发数。然后池中的线程数小于核心线程数时，每提交一个任务，线程池就会创建一个工作线程去执行这个任务。然后如果池中的线程数超过核心线程数了，那么这些新提交的任务就会被放到池队列中。然后如果你还要继续提交任务，把池队列也给放满了（21E+），那么这时候就判断，如果池中的线程数量小于线程池的最大线程数量（21E+），那就继续创建线程去执行。如果池中的线程数量大于线程池的最大线程数量了，就会抛出异常，拒绝任务，至于如何拒绝处理新增的任务，取决于线程池的饱和策略RejectedExecutionHandler了。
+概念：创建一个指定核心线程数量的线程池，这样就能控制最大并发数。然后池中的线程数小于核心线程数时，每提交一个任务，线程池就会创建一个工作线程去执行这个任务。然后如果池中的线程数超过核心线程数了，那么这些新提交的任务就会被放到等待队列中。然后如果你还要继续提交任务，把池队列也给放满了（21E+，会内存溢出），那么这时候就判断，如果池中的线程数量小于线程池的最大线程数量（21E+），那就继续创建线程去执行。如果池中的线程数量大于线程池的最大线程数量了，就会抛出异常，拒绝任务，具体的拒绝策略取决于线程池的饱和策略RejectedExecutionHandler.
 
 适用：对于需要保证所有提交的任务都要被执行的情况，它的性能好很多
 
@@ -1527,27 +1568,21 @@ newFixedThreadPool，newSingleThreadPool，newCachedThreadPool，ScheduledThread
 - IO密集型 = 2Ncpu（常出现于线程中：数据库数据交互、文件上传下载、网络数据传输等等）
 ```
 
+**newCachedThreadPool**
 
+概念：创建一个可缓存且不限线程数上限（21E+）的线程池，任何提交的任务都将立即执行。默认会终止和从从缓存中移除那些60s都没有被使用的线程。就是说，长时间保持这个空闲的线程池也不会占用资源。
+
+适用：适合执行大量短暂异步的程序，或者希望提交的任务尽快分配线程执行的场景
 
 **newSingleThreadPool**
 
 概念：创建一个使用单个 worker 线程的 Executor，以无界队列方式来运行该线程。可保证顺序地执行各个任务，并且在任意给定的时间不会有多个线程是活动的。与其他等效的 newFixedThreadPool(1)不同，可保证无需重新配置此方法所返回的执行程序即可使用其他的线程。
 
-适用：一个任务一个任务执行的场景
-
-
-
-**newCachedThreadPool**
-
-概念：创建一个可缓存线程池，调用 execute() 执行任务时它可以重用之前构造的并且还可用的线程，然后如果没有可用的线程的话，它就会池里面添加一个新的线程去执行任务。默认这个线程池能存在Integer.MAX_VALUE个线程，然后默认会终止和从从缓存中移除那些60s都没有被使用的线程。就是说，长时间保持这个空闲的线程池也不会占用资源。
-
-适用：适合执行大量短暂异步的程序，或者希望提交的任务尽快分配线程执行的情况。
-
-
+适用：一个个任务顺序执行的场景
 
 **ScheduledThreadPool**
 
-概念：创建一个线程池，它可安排在给定延迟后运行命令或者定期地执行。池中保存的线程数，即使线程是空闲的也包括在内。
+概念：创建一个线程池，它可安排在给定延迟后运行命令或者定期地执行。池中保存的线程数也包括空闲的线程。
 
 适用：周期性执行任务的场景
 
