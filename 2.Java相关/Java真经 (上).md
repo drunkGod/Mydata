@@ -439,7 +439,7 @@ private void ensureCapacityInternal(int minCapacity) {
 }
 ```
 
-- List非线程安全，线程安全的是Vector，或者用Collectionutils.synchronized(list); 可以将list变为线程安全。
+- List非线程安全，线程安全的是Vector，或者用Collectionutils.synchronized(list); 可以将list变为线程安全。线程不安全的例子如多线程中多list执行add()方法。线程安全的还有JUC下的CopyOnWriteArrayList。
 - 遍历删除时，会报错，所以可以倒序删除。或者使用迭代器删除。
 
 
@@ -693,7 +693,7 @@ public class MyAspect {
 
 **进程和线程**
 
-- **进程** - 进程是具有一定独立功能的程序（例如QQ.exe），关于某个数据集合上的一次运行活动，进程是系统进行资源分配和调度的一个独立单位。
+- **进程** - 进程是具有一定功能的程序（例如QQ.exe，taobao.ext），程序执行需要内存和CPU，进程就是系统进行资源分配和调度的一个独立单位。不同进程之间数据不共享。
 - **线程** - 线程是进程的一个实体，是CPU调度和分派的基本单位，它是比进程更小的能独立运行的基本单位；线程自己基本上不拥有系统资源，只拥有一点在运行中必不可少的资源(如程序计数器，一组寄存器和栈)，但是它可共享进程所拥有的全部资源。
 
 ​        相对进程而言，线程是一个更加接近于执行体的概念，它可以与同进程中的其他线程共享数据，但拥有自己的栈空间，拥有独立的执行序列。
@@ -733,11 +733,9 @@ public class ThreadTest {
     public static void main(String[] args) throws Exception {
         System.out.println("主线程" + Thread.currentThread().getName() + "开始运行。。");
         //方式1：继承Thread类实现多线程
-        Thread th1 = new MyThreadOne();
-        th1.start();
+        new MyThreadOne().start();
         //方式2：实现Runable接口实现多线程
-        Thread th2 = new Thread(new MyThreadTwo());
-        th2.start();
+        new Thread(new MyThreadTwo()).start();
         //方式3：实现Callbble接口实现多线程
         //3.1 使用FutureTask类作为中间类连接Callable与Thread。Callable也可以用线程池.submit获取。
         FutureTask<String> result = new FutureTask<String>(new MyThreadThree());
@@ -793,7 +791,7 @@ class MyThreadThree implements Callable {
 
 `yield()`：让出一次CPU时间
 
-`getState()`：获取线程状态
+`getState()`：获取线程状态。（NEW，RUNNABLE，BLOCKED，WAITING，TIME_WAITING，TERMINATED）
 
 `setPriority()/getPriority()`：设置/获取优先级
 
@@ -842,6 +840,10 @@ t1.start();
 TimeUnit.MILLISECONDS.sleep(50);
 t1.interrupt();
 ```
+
+**多线程临界资源**
+
+被多个线程共享的资源就是临界资源。多个线程同时访问临界资源时，如果不加上多线程的处理，则结果是不可预测的。原因：CPU时间片被抢 + Java内存模型。（时间片被抢后，同时修改了本地线程的值）
 
 
 
@@ -1219,7 +1221,7 @@ thread2获得t的锁->thread2执行methodB->thread2执行methodA->释放t的锁�
 
 - synchronized关键字不能继承。
 
-  ​在父类中的某个方法使用了synchronized关键字，而在子类中覆盖了这个方法，在子类中的这个方法默认情况下并不是同步的，而必须显式地在子类的这个方法中加上synchronized关键字才可以。或者可以在子类方法中调用父类中相应的方法。
+  在父类中的某个方法使用了synchronized关键字，而在子类中覆盖了这个方法，在子类中的这个方法默认情况下并不是同步的，而必须显式地在子类的这个方法中加上synchronized关键字才可以。或者可以在子类方法中调用父类中相应的方法。
 
 - 在定义接口方法时不能使用synchronized关键字。
 
@@ -1585,6 +1587,12 @@ newFixedThreadPool，newSingleThreadPool，newCachedThreadPool，ScheduledThread
 概念：创建一个线程池，它可安排在给定延迟后运行命令或者定期地执行。池中保存的线程数也包括空闲的线程。
 
 适用：周期性执行任务的场景
+
+```java
+ExecutorService executorService = Executors.newFixedThreadPool(1);
+executorService.execute(...);
+executorService.shutdown();
+```
 
 
 
