@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>test vue</title>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<style type="text/css">
+.red {
+	color: red;
+}
+
+.yellow {
+	color: yellow;
+}
+
+.blue {
+	color: blue;
+}
+.squareCls{
+	width: 150px;
+	height: 150px;
+	margin: 20px;
+	border: 2px grey solid;
+}
+</style>
+</head>
+<body>
+	<h1>1.vue基本使用: 引入vue框架js</h1>
+	<h1>语法：new Vue({el: '#xx', data: {yy : zz}}, methods: {})</h1>
+	<div id="v1">1+1 {{ 1+1 }} {{ message }}</div>
+	<hr>
+	<!-- vue指令-->
+	<h1>2.v-bind指令: 绑定属性</h1>
+	<h2>语法: v-bind:class="xx" || :class="xx"</h2>
+	<div id="v2">
+		<h4 :class="redCls" :style="borderSty">{{ name }}</h4>
+		<h4 :class="[boldCls, {red: redClsFlag}]"
+			:style="[borderSty, {color: bgcolor}]">{{ name }}</h4>
+		<img :src="imgUrl" alt="error">
+	</div>
+	<hr>
+	<h1>3.v-on指令: 绑定方法</h1>
+	<h2>语法: v-on:click="xx" || @click="xx"</h2>
+	<div id="v3">
+		<button @click="changeColor">点击变色</button>
+		<h4 :class="colorArr[colorIdx]">{{ name }}</h4>
+		<h4>{{ colorIdx[0] }}</h4>
+	</div>
+	<hr>
+	<h1>4.v-if指令: 显示/隐藏元素</h1>
+	<h2>语法: v-if="true/false" || v-show="true/false"</h2>
+	<div id="v4">
+		<button @click="handleV4">{{text}}</button>
+		<div v-if="ifFlag==0">如果同时使用一个元素去多个元素时用template，</div>
+		<div v-else-if="ifFlag==1">这样可以省出一个控制的div，减少dom元素，能提高效率。</div>
+		<div v-else>另外v-show是增加一个style=display:none，不会增减dom，v-if是增减dom</div>
+	</div>
+	<hr>
+	<h1>5.v-for指令: 遍历元素</h1>
+	<h2>语法: v-for="item in arr" || v-for="(item, index) in arr "</h2>
+	<h3>语法: v-for="value in objArr" || v-for="(value, key) in obj" ||
+		v-for="(value, key, index) in objArr"</h3>
+	<h3>语法: v-for="num in 10" || v-for="c in 'string'"</h3>
+	<!-- for时加上:key可以服用元素，提高效率。建议用id来做key。-->
+	<!-- 更改数组-->
+	<!-- 1.不能通过索引的方式去更改数组,这样不会渲染-->
+	<!-- 2.不能通过更该长度的方式去更改数组,这样不会渲染-->
+	<!-- 3.数组变异方法:pop、 shift、 unshift、 splice、sort、 reverse、push-->
+	<!-- 更改对象-->
+	<!-- 1.向对象内添加或者删除属性,不会渲染页面-->
+	<!-- 2.使用this.$set(obj, property, value)-->
+	<!-- 渲染底层原理：-->
+	<!-- Object.defineproperty-->
+	<div id="v5">
+		<ul>
+			<li>--- for in arr ---</li>
+			<li v-for="item in arr">{{ item }}</li>
+			<li>--- for in obj ---</li>
+			<li v-for="(value, key) in obj">{{ key }} ---- {{ value }}</li>
+			<li>--- for in objArr ---</li>
+			<li v-for="obj in objArr">{{ obj }}</li>
+			<li>--- for in num ---</li>
+			<li v-for="num in 3">{{ num }}</li>
+			<li>--- for in string ---</li>
+			<li v-for="c in 'string'">{{ c }}</li>
+		</ul>
+		<button @click="renderTest">渲染</button>
+	</div>
+	<hr>
+	<h1>6.v-model指令: 数据双向绑定</h1>
+	<h2>
+		语法: v-model="value" <==> :value="value" @input="handleInput ->
+		this.value=e.target.value"
+		</h3>
+		<div id="v6">
+			<input type="text" :value="value" @input="handleInput"> {{
+			value }} <br> <input type="text" v-model="value1"> {{
+			value1 }} <br>
+			<textarea v-model="value2"></textarea>
+			{{ value2 }} <br> <input type="checkbox" v-model="value3">
+			{{ value3 }} <br> <label for="html">html</label> <input
+				type="checkbox" id="html" value="html" v-model="value4"> <label
+				for="js">js</label> <input type="checkbox" id="js" value="js"
+				v-model="value4"> <label for="vue">vue</label> <input
+				type="checkbox" id="vue" value="vue" v-model="value4"> {{
+			value4 }} <br> <label for="man">男</label> <input type="radio"
+				id="man" value="man" name="sex" v-model="value5"> <label
+				for="woman">女</label> <input type="radio" id="woman" value="woman"
+				name="sex" v-model="value5"> {{ value5 }} <br> <select
+				name="" id="" v-model="value6" multiple>
+				<option value="html">html</option>
+				<option value="js">js</option>
+				<option value="vue">vue</option>
+			</select>{{ value6 }}
+		</div>
+		<hr>
+		<h1>7.watch/computed指令: 监听数据变化。（某个属性/涉及属性的）</h1>
+		<h2>
+			语法: watch:{}/computed:
+			</h3>
+			<div id="v7">
+				{{ desc }} <br> {{ cdesc }}
+			</div>
+
+			<hr>
+			<h1>8.component指令: 全局组件/局部组件</h1>
+			<h2>8.1 组件基本使用</h2>
+			<h3>语法: Vue.Component('name':{data(){},
+				template:`&lt;div>&lt;/div>`, methods:{}})</h3>
+			<h3>语法: new Vue('#name',
+				{components:{'cname':{template:'&lt;div>&lt;/div>'}}})</h3>
+			<div id="v811">
+				<hellovue></hellovue>
+				<hellovue></hellovue>
+				<hellovue></hellovue>
+			</div>
+			<div id="v812">
+				<c2></c2>
+			</div>
+			<h2>8.2 组件传值</h2>
+			<h3>语法:父 -> 子 传值 props， 检验validator()，v-bind="obj"</h3>
+			<h3>语法:子 -> 父 传值 $emit('handle', value)</h3>
+			<div id="v821">
+				<mycomponent :title="title" :content="content" :author="author"></mycomponent>
+			</div>
+			<div id="v822">
+				<mycomponent v-bind="childinfo" :obj="obj" @change="whenChildChange"></mycomponent>
+				<mycomponent v-bind="childinfo" :obj="obj" @change="whenChildChange"></mycomponent>
+			</div>
+			<hr>
+			<h1>9.ref指令: 引用</h1>
+			<h2>语法：ref="xxx"，this.$refs.xxx.style.backgroundColor = red; </h2>
+			<p>（1）元素的引用会覆盖，即引用执行最后一个元素；</p>
+			<p>（2）v-for循环中添加引用，引用值是数组，数组里面是一个个dom对象；</p>
+			<p>（2）组件的引用，即得到组件的实例对象。可以拿到组件的数据和方法。</p>
+			<div id="v9">
+				<ref-cmp ref="myref"></ref-cmp>
+			</div>
+			<hr>
+			<h1>10.vue脚手架安装</h1>
+			<p>随着前端工程化的概念越来越深入人心，脚手架的出现就是为减少重复性工作而引入的命令行工具，摆脱ctrl + c, ctrl + v，此话zenjiang? 现在新建一个前端项目，已经不是在html头部引入css，尾部引入js那么简单的事了，css都是采用Sass或则Less编写，在js中引入，然后动态构建注入到html中；除了学习基本的js，css语法和热门框架，还需要学习构建工具webpack，babel这些怎么配置，怎么起前端服务，怎么热更新；为了在编写过程中让编辑器帮我们查错以及更加规范，我们还需要引入ESlint；甚至，有些项目还需要引入单元测试（Jest）。对于一个更入门的人来说，这无疑会让人望而却步。而前端脚手架的出现，就让事情简单化，一键命令，新建一个工程，再执行两个npm命令，跑起一个项目。在入门时，无需关注配置什么的，只需要开心的写代码；另外，对于很多系统，他们的页面相似度非常高，所以就可以基于一套模板来搭建，虽然是不同的人开发，但用脚手架来搭建，相同的项目结构与代码书写规范，是很利于项目的后期维护的；以上就是为什么脚手架存在的意义， 让项目从"搭建-开发-部署"更加快速以及规范。</p>
+			<p>现在流行的前端脚手架都是基于NodeJs编写，其功能都是生成一个通用的目录结构，并配上构建、编译、检查等工程环境。大致流程如下：<br>
+			（1）解析用户输入的命令；<br>
+			（2）生成一些配置化文件，如package.json， 或webpack.config.js等；<br>
+			（3）根据用户的输入生成对应的模板项目；（高级一点的ctrl + c, ctrl + v）<br>
+			（4）安装该模板所需要的环境。</p>
+			<div id="v10">
+				<p>脚手架安装过程：</p>
+				<p>1.安装node.js：输入nodejs.org后下载LTS，一路下一步。成功 node -v 后查看 ）</p>
+				<p>2.安装淘宝镜像(可选)：npm install -g cnpm --registry=https://registry.npm.taobao.org。成功后 cnpm -v 查看</p>
+				<p>3.安装vue-cli：npm install -g @vue/cli。成功后 vue -V 查看</p>
+				<p>4.安装vue编译：npm install -g @vue/cli-service-global （可能要清缓存npm cache clean --force）</p>
+			</div>
+
+			<script type="text/javascript">
+		//用 el 或者用v.$mount绑定。
+		//用 vm.$el，拿到元素，
+		//用 vm.$data，可以拿到data对象，vm.message、vm.$data.message可以拿到data中的message对象。
+		//用 vm.$el.innerHTML，可拿到元素修改前的值。
+		//用 vm.$nextTick，可拿到元素修改后的值。
+		//用 vm.$event，可拿到元素本身。
+		//通过vue中model的data可以更改view中的显示，通过view也可以改变data中的值，即数据双向绑定。
+		var v1 = new Vue({
+			el: '#v1',
+			data: {
+				message: 'Hello!',
+				// vue: 'vue',
+			} 
+		})
+		// v1.message = 'Hello '+ v1.vue;
+		// console.log(v1.$el.innerHTML);
+		v1.$nextTick(()=>{
+			console.log(v1.$el.innerHTML);
+		})
+		
+		var v2 = new Vue({
+			el:"#v2",
+			data:{
+				name: "vue bind test",
+				imgUrl: "https://cn.vuejs.org/images/logo.png",
+				redCls: 'red',
+				redClsFlag: false,
+				boldCls: 'bold',
+				borderSty: {border: 'solid yellow 1px'},
+				bgcolor: 'grey',
+			}
+		})
+		
+		var v3 = new Vue({
+			el:"#v3",
+			data:{
+				name: 'vue test method',
+				colorArr: ['red', 'yellow', 'blue'],
+				colorIdx: 0,
+			},
+			methods: {
+				changeColor(){
+					//this = v3
+					this.colorIdx = (++this.colorIdx) % 3;
+				}
+			}
+		})
+		
+		var v4 = new Vue({
+			el: '#v4',
+			data: {
+				ifFlag: 0,
+				text: '显示p0',
+
+			},
+			methods: {
+				handleV4(){
+					this.ifFlag = (++this.ifFlag) % 3;
+					this.text = '显示p'+ this.ifFlag;
+				}
+			}
+		})
+
+		var v5 = new Vue({
+			el: '#v5',
+			data: {
+				arr: ['java', 'python', 'datalearn'],
+				obj: {k1:'value1', k2: 'value2', k3: 'value3'},
+				objArr: [{k1:'value1', k2: 'value2', k3: 'value3'},{k1:'value11', k2: 'value22', k3: 'value33'}],
+			},
+			methods: {
+				renderTest(){
+					this.arr.push('vue');
+					this.$set(this.obj, 'k1', 'new Value1');
+				}
+			}
+		})
+
+		var v6 = new Vue({
+			el: '#v6',
+			data: {
+				value: 'vue',
+				value1: 'vue1',
+				value2: 'vue2',
+				value3: true,
+				value4: [],
+				value5: '',
+				value6: [],
+			},
+			methods: {
+				handleInput(e){
+					this.value = e.target.value;
+				}
+			}
+		})
+
+		var v7 = new Vue({
+			el: '#v7',
+			data: {
+				name: 'vue',
+				age: '18',
+				look: 'smart',
+				desc: 'name: vue, age: 18, look: smart',
+			},
+			methods: {
+				handleInput(e){
+					this.value = e.target.value;
+				}
+			},
+			methods: {
+				// desc() {
+				// 	console.log('-----call methods desc-----');
+				// 	this.desc = `dname: ${this.name}, age: ${this.age}, look: ${this.look}`;
+				// }
+			},
+			watch: {
+				name() {
+					console.log('-----call watch name-----');
+					this.desc = `wname: ${this.name}, age: ${this.age}, look: ${this.look}`;
+				}
+			},
+			computed: {
+				cdesc() {
+					console.log('-----call computed cdesc-----');
+					return `name: ${this.name}, age: ${this.age}, look: ${this.look}`;
+				}
+			}
+		})
+
+		//全局组件
+		Vue.component('hellovue', {
+			data() {
+				var result = {
+					msg: 'hello vue!'
+				}
+				return result;
+			},
+			template: `
+			<div>
+				<button @click="handleClick">click</button>
+				<span>{{ msg }}</span>
+				<button @click="init">restore</button>
+			</div>
+			`,
+			methods: {
+				handleClick() {
+					this.msg = 'emmm...';
+				},
+				init() {
+					this.msg = 'hello vue！';
+				}
+			}
+		});
+		new Vue({el:'#v811'});
+		//局部组件
+		new Vue({
+			el:'#v812',
+			components: {
+				'c2' : {
+					template : '<div>part component</div>'
+				}
+			}
+		});
+
+		//局部组件
+		new Vue({
+			el:'#v821',
+			data:{
+				title: '灰化肥会发挥',
+				content: '阿斯蒂芬记录卡撒酒疯啦是',
+				author: 'lcl',
+			},
+			components: {
+				mycomponent : {
+					props: ['title', 'content', 'author'],
+					template : `<div>
+					<h4>{{ title }}</h4>
+					<h6>author: {{ author }}</h6>
+					<p>{{ content }}</p>
+					</div>`
+				}
+			}
+		});
+
+		//局部组件
+		new Vue({
+			el:'#v822',
+			data:{
+				childinfo: {title: '父的childinfo-title',
+							content: '父的childinfo-content',
+							number: 0,
+							},
+				obj: {a:10, b:'bb'}
+			},
+			methods: {
+				whenChildChange(childNum){
+					console.log(childNum);
+					this.obj.a = childNum;
+				}
+			},
+			components: {
+				mycomponent : {
+					// props: ['title', 'content', 'number', 'obj'],
+					props:{'title':{}, 'content':{}, 'number':{}, 'obj':{}},
+					data(){
+						return {
+							ownNum:0
+						}
+					},
+					template : `<div>
+					<h4>{{ title }}</h4>
+					<p>{{ content }}</p>
+					{{ obj }}
+					<div><button @click="handleClick">add</button>number: {{ number }} - {{ ownNum }}</div>
+					</div>`,
+					methods: {
+						handleClick() {
+							// this.obj.a ++;	//如果是父属性是对象时则会同时改变了各个组件的值，所以应该放到组件自己的data中。
+							this.ownNum += 10;	//要更改的数据，要放到组件的data里，使各个组件互不影响。
+							// this.number ++;	//如果是父属性，则不建议直接修改，子向父传值：使用$emit()
+							this.$emit('change', this.ownNum);
+						}
+					}
+				}
+			}
+		});
+
+		new Vue({
+			el: "#v9",
+			components:{
+				'ref-cmp' : {
+					data() {
+						return {
+							colorArr: ['red', 'yellow', 'blue', 'green']
+						}
+					},
+					template : `<div>
+					<button v-for="color in colorArr" :key="color" :style="{backgroundColor: color}"
+					 @click="addColor(color)" :data-colorset="color" ref="btnref"> {{ color }} </button>
+					<div class="squareCls" ref='sqaRef'></div>
+					</div>
+					`,
+					methods: {
+						addColor(color){
+							// console.log(e.target.dataset.colorset);	//html5可以通过data-方式set设值。
+							console.log(this.$refs.btnref);	//这是一个数组，里面是4个button元素
+							var sqaRef = this.$refs.sqaRef;
+							sqaRef.style.backgroundColor = color;
+						}
+					}
+				}
+			}
+
+		})
+
+
+	</script>
+</body>
+</html>

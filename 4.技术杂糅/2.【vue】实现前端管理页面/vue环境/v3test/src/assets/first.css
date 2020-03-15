@@ -1,0 +1,33 @@
+
+	* {
+		margin: 0;
+		padding: 0;
+	}
+	.left{
+		width: 10%;
+		height: 500px;
+		float: left;
+		margin: 5px;
+		margin-right: 10px;
+		/*border: 1px blue solid;*/
+		background-color: rgb(241,243,244);
+	}
+	.right{
+		width: 85%;
+		height: 500px;
+		float: left;
+		margin: 5px;
+		border: 1px red solid;
+	}
+	.right .right-top{
+		height: 150px;
+		width: 100%;
+		/*border: 1px yellow solid;*/
+	}
+	.right .right-bottom{
+		height: 350px;
+		width: 100%;
+		float: left;
+		border: 1px cyan solid;
+		background-color: rgb(241,243,244);
+	}
