@@ -1,20 +1,50 @@
 <template>
-  <div id="main">
-    <div>登录成功了！！！！！！！！！！！！</div>
-    <div>login info : {{loginInfo}}</div>
+	<div class="main">
+		<!-- 顶部 -->
+		<div class="top">
+			<span>{{sysName}}</span>
+			<span class="top-right">当前用户：{{userName}}</span>
+		</div>
+		<!-- 左侧菜单 -->
+		<div class="left">
+			<leftMenu></leftMenu>
+		</div>
+		<!-- 右侧内容 -->
+		<div class="right">
+			<right></right>
+		</div>
+	</div>
 
-  </div>
+
 </template>
 
-<script type="text/javascript">
+<style>
+	@import '../assets/mainPage.css'
+</style>
 
-	export default {
-	    data(){
+<script type="text/javascript">
+	import leftMenu from "../components/leftMenu.vue"
+	import right from "../components/right.vue"
+	export default{
+		created(){
+			console.log(this.sysName);
+			console.log(this.userName);
+			if(this.userName == undefined) {
+				alert("请登录");
+				this.$router.push({path:"/"});
+			}
+		},
+		data(){
 	    	return {
-		        loginInfo: this.$route.params.name+"++"+this.$route.params.password
+	    		sysName: "XXXX管理系统",
+	    		userName: this.$route.params.name
 		      }
-	    }
-		
+	    },
+		components: {
+			leftMenu,
+			right
+		}
 	}
 	
 </script>
+

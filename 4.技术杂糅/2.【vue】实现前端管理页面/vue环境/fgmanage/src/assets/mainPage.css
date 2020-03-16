@@ -1,0 +1,38 @@
+
+	* {
+		margin: 0;
+		padding: 0;
+	}
+
+	.main{
+		width: 100%;
+	}
+
+	.top{
+		height: 30px;
+		line-height:30px;
+		width: 100%;
+		border-bottom: 1px grey solid;
+		border-top: 1px grey solid;
+		background-color: #E9EEF3;
+	}
+
+	.top-right {
+		float: right;
+		margin-right: 20px;
+	}
+
+	.left{
+		width: 200px;
+		float: left;
+		margin: 5px;
+		margin-right: 10px;
+		background-color: rgb(241,243,244);
+	}
+	
+	.right{
+		width: 99% - 200px;
+		float: left;
+		margin: 5px;
+	}
+	

@@ -1,32 +1,32 @@
 <template>
-  <div><!-- @submit="handleSubmit"  -->
-    <form @submit.prevent="login" >
-      <div class="login">
-        <span style="color: #e0002f; transform: translateY(-20px);"></span>
-        <div>
-          <label>账号</label> <input type="text" class="login-input" v-model="name">
-        </div>
-        <div>
-          <label>密码</label> <input type="password" class="login-input" v-model="password">
-        </div>
-        <div>
-          <button type="submit" class="login-btn">登录</button>
-          <button type="reset" class="login-btn">重置</button>
-        </div>
+  <div>
+    <div class="login">
+      <div v-if="err != ''">
+        <span style="color: #e0002f; transform: translate(-50px,-30px); position: fixed;" >{{err}}</span>
       </div>
-    </form>
+      <div>
+        <input type="text" class="login-input" placeholder="用户名" v-model="name">
+      </div>
+      <div>
+        <input type="password" class="login-input" placeholder="密码" v-model="password">
+      </div>
+      <div>
+        <button class="login-btn" @click="login">登录</button>
+        <button class="login-btn" @click="resetParam">重置</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <style type="text/css">
 
   .login {
-  position: fixed;
-  left: 50%;
-  top: 40%;
-  margin: -100px 0px 0px -150px;
-  text-align: center;
-}
+    position: fixed;
+    left: 50%;
+    top: 40%;
+    margin: -100px 0px 0px -150px;
+    text-align: center;
+  }
 
  .login div {
     margin-top: 10px;
@@ -66,17 +66,27 @@
     data(){
       return {
         name: '',
-        password : ''
+        password : '',
+        err : ''
       }
     },
     methods: {
       login() {
+        if(this.name == '') {
+          this.err = '用户名不能为空';
+          return;
+        }
         this.$router.push({
           name:"/mainPage", 
           params: {
              name: this.name,
              password: this.password
           }})
+      },
+      resetParam() {
+        this.name = '';
+        this.password = '';
+        this.err = '';
       }
     }
   };
