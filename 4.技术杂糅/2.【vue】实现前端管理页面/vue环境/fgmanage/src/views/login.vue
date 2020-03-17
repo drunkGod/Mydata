@@ -76,6 +76,7 @@
           this.err = '用户名不能为空';
           return;
         }
+        sessionStorage.setItem('user', this.name);
         this.$router.push({
           name:"/mainPage", 
           params: {
@@ -87,6 +88,7 @@
         this.name = '';
         this.password = '';
         this.err = '';
+        sessionStorage.clear();
       }
     }
   };
