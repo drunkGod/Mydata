@@ -1,2 +1,0 @@
-JVM GC调优 预习课：
-https://ke.qq.com/course/468333?taid=4094439568385389
